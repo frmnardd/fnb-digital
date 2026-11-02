@@ -14,6 +14,9 @@ import { getSessionSecret } from "./secret";
 
 const TOKEN_BYTES = 32;
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/;
+
+/** Nama cookie httpOnly yang menyimpan token sesi meja di browser pelanggan. */
+export const TABLE_SESSION_COOKIE = "fnb_table_session";
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 const HMAC_PREFIX = "table-session:";
 

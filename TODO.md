@@ -19,7 +19,7 @@
 - [x] **2.3 API Call Waiter (`POST /api/tables/[qrSlug]/call-waiter`)**: Buat endpoint panggilan pelayan dari meja (*Minta Air/Tisu*, *Bersihkan Meja*, *Tanya Menu*, *Minta Bill*) dengan *rate-limit* anti-spam (maksimal 1 panggilan per 2 menit per meja).
 
 ## Fase 3: Antarmuka Halaman Pelanggan (Customer Web App — Mobile-First)
-- [ ] **3.1 Header Meja & Quick Action Bar**: Buat komponen `CustomerHeader` yang menampilkan identitas restoran, nomor meja aktif, *switcher Dine-In / Takeaway*, dan modal tombol *Panggil Pelayan*.
+- [x] **3.1 Header Meja & Quick Action Bar**: Buat komponen `CustomerHeader` yang menampilkan identitas restoran, nomor meja aktif, *switcher Dine-In / Takeaway*, dan modal tombol *Panggil Pelayan*.
 - [ ] **3.2 Navigasi Kategori Sticky & Pencarian Instan**: Buat komponen `CategoryTabs` yang menempel saat di-*scroll*, bilah pencarian menu *real-time*, dan filter *dietary* (*Best Seller*, *Pedas*, *Baru*).
 - [ ] **3.3 Katalog Kartu Menu (`MenuCard`)**: Buat komponen kartu menu dengan gambar rasio 1:1, *badge* stok habis (*grayscale* jika *Out of Stock*), dan indikator jumlah item yang sudah masuk keranjang.
 - [ ] **3.4 Bottom Sheet Kustomisasi Menu (`ModifierSheet`)**: Buat *slide-up drawer* untuk memilih opsi *Radio* (wajib), *Checkbox* (add-on opsional), catatan khusus per item, dan kalkulasi total harga item secara reaktif.
