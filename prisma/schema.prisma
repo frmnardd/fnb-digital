@@ -4,7 +4,8 @@
 // Blueprint: CONTEXT.md §4. File ini ditumbuhkan BERTAHAP per sub-tugas:
 //   1.2 -> Area, Table, TableSession                              (SELESAI)
 //   1.3 -> Category, MenuItem, ModifierGroup, ModifierOption, Ingredient, MenuRecipe (SELESAI)
-//   1.4 -> Staff, Order, OrderItem, Payment, CashierShift, CashDrawerLog, WaiterCall (BERIKUTNYA)
+//   1.4 -> Staff, Order, OrderItem, Payment, CashierShift, CashDrawerLog, WaiterCall (SELESAI)
+//   1.5 -> prisma/seed.ts (data contoh area, meja, menu, modifier, staf) (BERIKUTNYA)
 // Jangan mengubah nama model/enum yang sudah ada tanpa persetujuan pengguna.
 // =============================================================================
 
@@ -99,8 +100,9 @@ model Table {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  area     Area           @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  sessions TableSession[]
+  area        Area           @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sessions    TableSession[]
+  waiterCalls WaiterCall[]
 
   /// Satu nomor meja tidak boleh duplikat di dalam area yang sama.
   @@unique([areaId, tableNumber])
@@ -139,7 +141,9 @@ model TableSession {
 
   table Table @relation(fields: [tableId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  /// Relasi `orders Order[]` ditambahkan pada sub-tugas 1.4 (model Order belum ada).
+  orders      Order[]
+  waiterCalls WaiterCall[]
+
   @@index([tableId, status])
   @@index([status, openedAt])
   @@index([lastActivityAt])
@@ -248,6 +252,7 @@ model MenuItem {
   category       Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   modifierGroups ModifierGroup[] /// many-to-many implisit (tabel _MenuItemToModifierGroup)
   recipeItems    MenuRecipe[]
+  orderItems     OrderItem[]
 
   @@index([categoryId, isActive, sortOrder])
   @@index([station])
@@ -353,4 +358,363 @@ model MenuRecipe {
   @@unique([menuItemId, ingredientId])
   @@index([ingredientId])
   @@map("menu_recipes")
+}
+
+// -----------------------------------------------------------------------------
+// ENUM — Staf, pesanan, pembayaran, shift, & panggilan pelayan
+// -----------------------------------------------------------------------------
+
+/// Peran staf untuk RBAC (autentikasi & otorisasi).
+enum StaffRole {
+  ADMIN /// Owner / manajer — akses back-office penuh
+  CASHIER /// Kasir POS
+  KITCHEN /// Staf dapur & barista (KDS)
+  WAITER /// Pelayan / runner
+
+  @@map("staff_role")
+}
+
+/// Jenis pesanan.
+enum OrderType {
+  DINE_IN /// Makan di tempat (via QR meja atau input kasir)
+  TAKEAWAY /// Bawa pulang / walk-in tanpa meja
+
+  @@map("order_type")
+}
+
+/// Siklus hidup pesanan dari dibuat hingga selesai/dibatalkan.
+enum OrderStatus {
+  PENDING_PAYMENT /// Menunggu pembayaran online (QRIS/VA)
+  WAITING_CASHIER_APPROVAL /// Bayar di kasir — menunggu konfirmasi kasir / PIN meja
+  CONFIRMED /// Lunas / disetujui — tiket siap dikirim ke KDS
+  PREPARING /// Sedang dikerjakan dapur/bar
+  READY /// Seluruh item siap diantar
+  SERVED /// Sudah diantar ke meja
+  COMPLETED /// Selesai & sudah dibayar penuh
+  CANCELLED /// Dibatalkan (void / refund)
+
+  @@map("order_status")
+}
+
+/// Status per item pesanan pada layar KDS.
+enum OrderItemStatus {
+  QUEUED /// Menunggu diambil stasiun
+  COOKING /// Sedang dimasak
+  READY /// Siap diantar
+  SERVED /// Sudah diantar
+  VOIDED /// Dibatalkan item
+
+  @@map("order_item_status")
+}
+
+/// Metode pembayaran yang didukung.
+enum PaymentMethod {
+  QRIS_DYNAMIC /// QRIS dinamis via payment gateway
+  VIRTUAL_ACCOUNT /// Transfer bank via VA (BCA/Mandiri/BNI/BRI)
+  MANUAL_TRANSFER /// Transfer manual + kode unik 3 digit + bukti
+  CASH /// Tunai di kasir
+  EDC_CARD /// Kartu debit/kredit di mesin EDC
+
+  @@map("payment_method")
+}
+
+/// Status pembayaran.
+enum PaymentStatus {
+  PENDING /// Menunggu pembayaran / verifikasi
+  PAID /// Lunas
+  FAILED /// Gagal
+  REFUNDED /// Dikembalikan
+  EXPIRED /// Kedaluwarsa (QRIS/VA timeout)
+
+  @@map("payment_status")
+}
+
+/// Jenis panggilan dari meja (tombol Call Waiter).
+enum WaiterCallType {
+  WATER_TISSUE /// Minta air / tisu
+  CLEAN_TABLE /// Bersihkan meja
+  ASK_MENU /// Tanya menu
+  REQUEST_BILL /// Minta bill
+
+  @@map("waiter_call_type")
+}
+
+/// Status penanganan panggilan pelayan.
+enum WaiterCallStatus {
+  PENDING /// Belum direspons
+  ACKNOWLEDGED /// Diterima pelayan
+  RESOLVED /// Selesai ditangani
+
+  @@map("waiter_call_status")
+}
+
+/// Status shift kasir.
+enum CashierShiftStatus {
+  OPEN /// Shift berjalan
+  CLOSED /// Shift ditutup (Z-Report tercetak)
+
+  @@map("cashier_shift_status")
+}
+
+/// Jenis mutasi laci kas (cash drawer).
+enum CashDrawerLogType {
+  OPENING_FLOAT /// Modal awal saat buka shift
+  CASH_IN /// Kas masuk (penjualan tunai)
+  CASH_OUT /// Kas keluar (setoran/pengeluaran)
+  SALE /// Pembayaran penjualan tunai
+  REFUND /// Pengembalian dana
+  CLOSING_COUNT /// Hitung fisik saat tutup shift
+  ADJUSTMENT /// Koreksi manual supervisor
+
+  @@map("cash_drawer_log_type")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Staf (RBAC)
+// -----------------------------------------------------------------------------
+
+/// Akun staf internal (admin, kasir, dapur, pelayan).
+model Staff {
+  id      String    @id @default(cuid())
+  name    String
+  email   String    @unique
+  /// PIN otorisasi 6-digit (supervisor) — HASH HMAC-SHA256 + SESSION_SECRET.
+  pinHash String
+  role    StaffRole @default(CASHIER)
+
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shifts        CashierShift[]
+  payments      Payment[]
+  resolvedCalls WaiterCall[]    @relation("WaiterCallResolvedBy")
+  drawerLogs    CashDrawerLog[]
+
+  @@index([role, isActive])
+  @@map("staff")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Order & OrderItem
+// -----------------------------------------------------------------------------
+
+/// Satu pesanan. Banyak Order dapat berada dalam satu TableSession (Open Bill).
+model Order {
+  id String @id @default(cuid())
+
+  /// Nomor tampilan, contoh: "ORD-1024" (tanda "#" hanya ditambahkan di UI).
+  orderNumber String @unique
+
+  orderType OrderType   @default(DINE_IN)
+  status    OrderStatus @default(PENDING_PAYMENT)
+
+  /// Null untuk TAKEAWAY / walk-in yang tidak terikat meja.
+  tableSessionId String?
+  tableSession   TableSession? @relation(fields: [tableSessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  /// Data tamu (opsional, diisi pelanggan atau kasir).
+  customerName  String?
+  customerPhone String?
+
+  /// Snapshot nominal — Rupiah bulat. Dihitung ulang di server oleh src/lib/pricing.ts.
+  subtotal       Int
+  discountAmount Int @default(0)
+  serviceCharge  Int @default(0)
+  taxAmount      Int @default(0)
+  /// 3 digit kode unik untuk transfer manual (mempermudah rekonsiliasi).
+  uniqueCode     Int @default(0)
+  grandTotal     Int
+
+  notes String?
+
+  confirmedAt DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items    OrderItem[]
+  payments Payment[]
+
+  @@index([status, createdAt])
+  @@index([tableSessionId])
+  @@index([orderType, createdAt])
+  @@map("orders")
+}
+
+/// Satu baris item di dalam pesanan.
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+
+  /// Menu asal; nullable agar riwayat tetap utuh bila menu dihapus.
+  menuItemId String?
+  menuItem   MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  /// Snapshot nama & stasiun saat dipesan (menu bisa berubah setelahnya).
+  menuName String
+  station  StationType @default(KITCHEN)
+
+  quantity      Int @default(1)
+  /// Harga per unit setelah modifier (Rupiah bulat), dihitung & divalidasi server.
+  unitPrice     Int
+  /// Total tambahan modifier untuk baris ini (unitPrice * quantity sudah final).
+  modifierTotal Int @default(0)
+
+  /// Snapshot opsi terpilih: [{ groupId, groupName, optionId, optionName, priceDelta }]
+  modifiers Json?
+
+  notes String?
+
+  status     OrderItemStatus @default(QUEUED)
+  voidReason String?
+
+  /// Penanda waktu untuk SLA aging timer KDS.
+  queuedAt  DateTime  @default(now())
+  cookingAt DateTime?
+  readyAt   DateTime?
+  servedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([orderId])
+  @@index([status, station])
+  @@index([queuedAt])
+  @@map("order_items")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Payment, Shift Kasir, & Laci Kas
+// -----------------------------------------------------------------------------
+
+/// Transaksi pembayaran untuk satu order (boleh lebih dari satu untuk split bill).
+model Payment {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  method PaymentMethod
+  status PaymentStatus @default(PENDING)
+
+  amountPaid   Int
+  /// Kembalian untuk pembayaran tunai.
+  changeAmount Int @default(0)
+
+  /// Nama provider gateway, mis. "midtrans" / "xendit" / "manual-cash".
+  provider       String?
+  /// ID transaksi di gateway (unik untuk mencegah double-processing webhook).
+  gatewayRefId   String? @unique
+  /// Payload mentah gateway/webhook (audit & replay).
+  gatewayPayload Json?
+
+  /// Bukti transfer manual (hasil upload pelanggan).
+  proofImageUrl String?
+
+  paidAt    DateTime?
+  expiresAt DateTime?
+
+  /// Kasir yang memvalidasi pembayaran tunai/transfer manual.
+  cashierId String?
+  cashier   Staff?  @relation(fields: [cashierId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  /// Shift kasir tempat pembayaran ini dicatat.
+  shiftId String?
+  shift   CashierShift? @relation(fields: [shiftId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([status, method])
+  @@index([shiftId])
+  @@map("payments")
+}
+
+/// Sesi kerja kasir: modal awal, kas masuk/keluar, hingga penutupan & selisih.
+model CashierShift {
+  id      String @id @default(cuid())
+  staffId String
+  staff   Staff  @relation(fields: [staffId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  status CashierShiftStatus @default(OPEN)
+
+  startingCash     Int /// Modal awal laci kas
+  expectedCash     Int  @default(0) /// Kas yang seharusnya ada menurut sistem
+  actualEndingCash Int? /// Hasil hitung fisik saat tutup shift
+  variance         Int? /// actualEndingCash - expectedCash
+
+  openedAt DateTime  @default(now())
+  closedAt DateTime?
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  drawerLogs CashDrawerLog[]
+  payments   Payment[]
+
+  @@index([staffId, status])
+  @@index([openedAt])
+  @@map("cashier_shifts")
+}
+
+/// Catatan mutasi laci kas selama satu shift.
+model CashDrawerLog {
+  id      String       @id @default(cuid())
+  shiftId String
+  shift   CashierShift @relation(fields: [shiftId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  type   CashDrawerLogType
+  amount Int /// Positif = kas masuk, negatif = kas keluar
+  reason String?
+
+  /// Referensi opsional ke order yang memicu mutasi.
+  orderId String?
+  staffId String?
+  staff   Staff?  @relation(fields: [staffId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([shiftId, createdAt])
+  @@map("cash_drawer_logs")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Panggilan Pelayan (Call Waiter)
+// -----------------------------------------------------------------------------
+
+/// Panggilan dari meja ke layar pelayan/runner (air, tisu, bill, dst).
+model WaiterCall {
+  id String @id @default(cuid())
+
+  tableId        String
+  table          Table         @relation(fields: [tableId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tableSessionId String?
+  tableSession   TableSession? @relation(fields: [tableSessionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  type   WaiterCallType
+  status WaiterCallStatus @default(PENDING)
+
+  note String?
+
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+
+  /// Pelayan yang menyelesaikan panggilan.
+  resolvedByStaffId String?
+  resolvedBy        Staff?  @relation("WaiterCallResolvedBy", fields: [resolvedByStaffId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([tableId, createdAt])
+  @@map("waiter_calls")
 }

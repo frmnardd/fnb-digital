@@ -7,57 +7,58 @@
 
 ## 1. Status Proyek Terkini (Current State)
 * **Fase Aktif**: `Fase 1 — Inisialisasi Proyek, Skema Database, & Utilitas Inti`
-* **Sub-Tugas Terakhir yang Selesai**: `1.3 Skema Prisma — Katalog Menu, Modifiers, & Resep` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `1.4 Skema Prisma — Order, Payment, Shift Kasir, & Call Waiter`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `tsc --noEmit` exit `0`; `npx prisma validate` ✔, `format` ✔, `generate` ✔ (Client 6.19.3). 9 model terdaftar: `Area, Table, TableSession, Category, MenuItem, ModifierGroup, ModifierOption, Ingredient, MenuRecipe`.
-* **Progress**: 3 dari 31 sub-tugas selesai.
+* **Sub-Tugas Terakhir yang Selesai**: `1.4 Skema Prisma — Order, Payment, Shift Kasir, & Call Waiter` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `1.5 Database Seeder (prisma/seed.ts)`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `tsc --noEmit` exit `0`; `prisma validate`/`format`/`generate` ✔ (Client 6.19.3). Schema final Fase 1: **16 model** (`Area, Table, TableSession, Category, MenuItem, ModifierGroup, ModifierOption, Ingredient, MenuRecipe, Staff, Order, OrderItem, Payment, CashierShift, CashDrawerLog, WaiterCall`), 13 enum.
+* **Migrasi**: SQL awal sudah di-generate ke `prisma/migrations/20261103000000_init/migration.sql` (529 baris, 17 tabel termasuk join `_MenuItemToModifierGroup`) + `prisma/migrations/migration_lock.toml`. **BELUM di-apply** karena PostgreSQL tidak tersedia di lingkungan ini.
+* **Progress**: 4 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `prisma/schema.prisma` | **Diperbarui** (+209 baris) — enum `StationType` (`KITCHEN/BAR/PASTRY`), `ModifierSelectionType` (`SINGLE/MULTIPLE`), `IngredientUnit` (`GRAM/ML/PIECE/PACK/SLICE`); model `Category`, `MenuItem`, `ModifierGroup`, `ModifierOption`, `Ingredient`, `MenuRecipe` |
-| `TODO.md` | `1.3` ditandai `[x]` |
+| `prisma/schema.prisma` | **Diperbarui** (+363 baris) — enum `StaffRole`, `OrderType`, `OrderStatus`, `OrderItemStatus`, `PaymentMethod`, `PaymentStatus`, `WaiterCallType`, `WaiterCallStatus`, `CashierShiftStatus`, `CashDrawerLogType`; model `Staff`, `Order`, `OrderItem`, `Payment`, `CashierShift`, `CashDrawerLog`, `WaiterCall`; relasi balik `Table.waiterCalls`, `TableSession.orders`, `TableSession.waiterCalls`, `MenuItem.orderItems` |
+| `prisma/migrations/20261103000000_init/migration.sql` | **Baru** — DDL lengkap 17 tabel (UTF-8 tanpa BOM) |
+| `prisma/migrations/migration_lock.toml` | **Baru** — `provider = "postgresql"` |
+| `TODO.md` | `1.4` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`1.4 Skema Prisma — Order, Payment, Shift Kasir, & Call Waiter`**, ubah menjadi `[/]`. Jangan hapus/ubah model yang sudah ada — hanya menambah.
-2. **Tambahkan model pendukung `Staff`** (wajib, karena sub-tugas 1.5 harus men-*seed* akun Admin/Kasir/Dapur dan 1.4 butuh referensi kasir pada shift & payment):
-   * `enum StaffRole { ADMIN CASHIER KITCHEN WAITER }` → `@@map("staff_role")`.
-   * `Staff`: `name`, `email String @unique`, `pinHash String` (PIN supervisor 6-digit, HMAC-SHA256), `role StaffRole`, `isActive Boolean @default(true)`, relasi `shifts CashierShift[]`, `payments Payment[]`, `resolvedCalls WaiterCall[]`, `@@map("staff")`.
-3. **Enum wajib** (semua dengan `@@map("...")` snake_case):
-   * `OrderType { DINE_IN TAKEAWAY }`, `OrderStatus { PENDING_PAYMENT WAITING_CASHIER_APPROVAL CONFIRMED PREPARING READY SERVED COMPLETED CANCELLED }`, `OrderItemStatus { QUEUED COOKING READY SERVED VOIDED }`.
-   * `PaymentMethod { QRIS_DYNAMIC VIRTUAL_ACCOUNT MANUAL_TRANSFER CASH EDC_CARD }`, `PaymentStatus { PENDING PAID FAILED REFUNDED EXPIRED }`.
-   * `WaiterCallType { WATER_TISSUE CLEAN_TABLE ASK_MENU REQUEST_BILL }`, `WaiterCallStatus { PENDING ACKNOWLEDGED RESOLVED }`.
-   * `CashierShiftStatus { OPEN CLOSED }`, `CashDrawerLogType { OPENING_FLOAT CASH_IN CASH_OUT SALE REFUND CLOSING_COUNT ADJUSTMENT }`.
-4. **Model** (semua `id @default(cuid())` + `createdAt`/`updatedAt`, nominal `Int` Rupiah bulat):
-   * `Order`: `orderNumber String @unique` (format `ORD-1024`, tanda `#` hanya di UI), `orderType`, `status @default(PENDING_PAYMENT)`, `tableSessionId String?` + relasi `tableSession TableSession?` (`onDelete: Restrict`) — **null** untuk walk-in/takeaway, `customerName?`, `customerPhone?`, `subtotal Int`, `discountAmount Int @default(0)`, `serviceCharge Int @default(0)`, `taxAmount Int @default(0)`, `uniqueCode Int @default(0)`, `grandTotal Int`, `notes?`, `confirmedAt?`, `completedAt?`, `cancelledAt?`, `@@index([status, createdAt])`, `@@index([tableSessionId])`, `@@map("orders")`.
-   * `OrderItem`: `orderId`, `menuItemId String?` (`onDelete: SetNull`, snapshot tetap aman), `menuName String` & `station StationType` (snapshot), `quantity Int`, `unitPrice Int` (harga dasar setelah modifier per unit), `modifierTotal Int @default(0)`, `modifiers Json?` (snapshot `[{groupId,name,optionId,name,priceDelta}]`), `notes String?`, `status OrderItemStatus @default(QUEUED)`, `voidReason String?`, `queuedAt DateTime @default(now())`, `cookingAt?`, `readyAt?`, `servedAt?`, `@@index([orderId])`, `@@index([status, station])`, `@@map("order_items")`.
-   * `Payment`: `orderId`, `method PaymentMethod`, `status PaymentStatus @default(PENDING)`, `amountPaid Int`, `changeAmount Int @default(0)`, `provider String?`, `gatewayRefId String? @unique`, `gatewayPayload Json?`, `proofImageUrl String?`, `paidAt?`, `expiresAt?`, `cashierId String?` + relasi `cashier Staff?`, `shiftId String?`, `@@index([orderId])`, `@@index([status, method])`, `@@map("payments")`.
-   * `CashierShift`: `staffId`, `status CashierShiftStatus @default(OPEN)`, `startingCash Int`, `expectedCash Int @default(0)`, `actualEndingCash Int?`, `variance Int?`, `openedAt @default(now())`, `closedAt?`, `notes?`; relasi `staff`, `drawerLogs CashDrawerLog[]`, `payments Payment[]`; `@@index([staffId, status])`, `@@map("cashier_shifts")`.
-   * `CashDrawerLog`: `shiftId`, `type CashDrawerLogType`, `amount Int`, `reason?`, `orderId String?`, `staffId String?`, relasi `shift CashierShift` (`onDelete: Cascade`); `@@index([shiftId, createdAt])`, `@@map("cash_drawer_logs")`.
-   * `WaiterCall`: `tableId`, `tableSessionId String?`, `type WaiterCallType`, `status WaiterCallStatus @default(PENDING)`, `note?`, `acknowledgedAt?`, `resolvedAt?`, `resolvedByStaffId String?` + relasi `resolvedBy Staff?`; `@@index([status, createdAt])`, `@@index([tableId, createdAt])`, `@@map("waiter_calls")`.
-5. **Update relasi balik pada model lama** (jangan bikin duplikat): `TableSession.orders Order[]`, `Table.waiterCalls WaiterCall[]`, `MenuItem.orderItems OrderItem[]`.
-6. Verifikasi: `npx prisma validate` → `format` → `generate` (exit 0). Cek model: `node -e "console.log(Object.keys(require('@prisma/client').Prisma.ModelName))"`.
-7. **Migrasi awal**: PostgreSQL lokal **TIDAK tersedia** (port 5432 tertutup, sudah diprobe). Jangan menghabiskan waktu menunggu `migrate dev`. Jalankan generator SQL saja:
-   `npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script` → simpan ke `prisma/migrations/20261103000000_init/migration.sql` (+ `migration_lock.toml` berisi `provider = "postgresql"`), lalu commit. Catat di HANDOVER bahwa `npx prisma migrate deploy` harus dijalankan saat DATABASE_URL tersedia.
-8. Tandai `[x]`, perbarui `HANDOVER.md`, `git commit` (`feat(db): add order, payment, shift, and waiter call models`), lalu push.
+1. Ambil **`1.5 Database Seeder (prisma/seed.ts)`**, ubah menjadi `[/]`. Jangan ubah schema kecuali benar-benar perlu (bila perlu, buat migrasi baru — jangan edit migrasi init).
+2. **Buat `src/lib/security/pin.ts`** (dibutuhkan seeder, dipakai ulang di 2.1): `hashPin(pin: string): string` & `verifyPin(pin: string, hash: string): boolean` memakai `node:crypto` HMAC-SHA256 dengan `process.env.SESSION_SECRET` (gagal jelas bila env kosong). Tanpa library baru.
+3. **Buat `prisma/seed-data.ts`** — data murni (tanpa koneksi DB) yang di-export sebagai konstanta, agar bisa diaudit tanpa PostgreSQL:
+   * **2 Area**: `Indoor` (`slug: "indoor"`, floor 1), `Outdoor` (`slug: "outdoor"`, floor 2).
+   * **10 Meja**: `meja-01` … `meja-05` di Indoor, `meja-06` … `meja-10` di Outdoor. `tableNumber` = `"01"`…`"10"`, `capacity` 2–6 bervariasi, `qrSlug` = `"meja-01"` dst, `status: AVAILABLE`, `pinEnabled: true` untuk 3 meja pertama + `currentPin: hashPin("1234")`.
+   * **4 Kategori**: `Makanan Utama` (`makanan-utama`), `Camilan` (`camilan`), `Kopi & Teh` (`kopi-teh`), `Minuman Segar` (`minuman-segar`), masing-masing `sortOrder` 0..3.
+   * **12 Menu** (harga Rupiah bulat, `costPrice` ≈ 35–40% harga jual, `station` sesuai: makanan/camilan → `KITCHEN`, kopi/minuman → `BAR`): Nasi Goreng Kampung 38000, Mie Ayam Bakso 35000, Ayam Geprek Sambal Ijo 32000, Sate Ayam Madura 45000, Kentang Goreng 22000, Pisang Goreng Keju 25000, Kopi Susu Gula Aren 24000, Americano 20000, Cappuccino 28000, Es Teh Manis 12000, Lemon Tea Segar 18000, Jus Alpukat 26000. Isi `tags` (mis. `["PEDAS"]`, `["BARU"]`, `["BEST_SELLER"]`), `prepTimeMinutes` 5–20, `imageUrl` boleh `null`.
+   * **4 Modifier Group** + opsinya:
+     - `Level Pedas` (SINGLE, `isRequired: true`, min 1 / max 1) → Tidak Pedas (0), Sedang (0), Pedas (0), Extra Pedas (0) — tempel ke menu makanan pedas (Nasi Goreng, Ayam Geprek, Mie Ayam).
+     - `Ukuran` (SINGLE, required, min 1 / max 1) → Reguler (0), Large (+8000) — tempel ke semua minuman & kopi.
+     - `Extra Topping` (MULTIPLE, opsional, min 0 / max 3) → Extra Telur (+5000), Keju Mozzarella (+7000), Extra Ayam (+10000) — tempel ke makanan utama & camilan.
+     - `Level Gula` (SINGLE, required untuk minuman) → Tanpa Gula (0), Less Sugar (0), Normal (0), Extra Manis (0) — tempel ke kopi/teh & jus.
+   * **Staf contoh** (PIN di-hash via `hashPin`, jangan plaintext): `admin@fnb.local` (ADMIN, PIN `111111`), `kasir@fnb.local` (CASHIER, PIN `222222`), `dapur@fnb.local` (KITCHEN, PIN `333333`), opsional `waiter@fnb.local` (WAITER, PIN `444444`).
+4. **Buat `prisma/seed.ts`** — idempoten (pakai `upsert` dengan kunci alami: `slug`/`qrSlug`/`email`/`name`), menghapus data lama secara terarah bila perlu, `console.log` ringkasan jumlah data. Tambahkan flag `--dry-run` yang hanya memvalidasi & mencetak jumlah data tanpa konek DB (dipakai untuk verifikasi di lingkungan tanpa PostgreSQL).
+5. **Update `package.json`**: ganti script `"db:seed": "tsx prisma/seed.ts"` → `"db:seed": "prisma db seed"` dan tambahkan blok `"prisma": { "seed": "tsx prisma/seed.ts" }`.
+6. **Verifikasi** (tanpa DB): `npx tsc --noEmit` (seed & seed-data ikut type-check) dan `npx tsx prisma/seed.ts --dry-run` → harus mencetak 2 area, 10 meja, 4 kategori, 12 menu, 4 modifier group, 4 staf. Bila ada PostgreSQL, jalankan `npx prisma migrate deploy` lalu `npm run db:seed`.
+7. Tandai `[x]`, perbarui `HANDOVER.md`, `git commit` (`feat(db): add idempotent database seeder with sample catalog`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Mata uang = Rupiah bulat (`Int`, tanpa sen)** untuk semua nominal (`basePrice`, `costPrice`, `priceDelta`, `costPerUnit`, dan nanti `subtotal`/`grandTotal`/`amountPaid`). Stok bahan memakai `Decimal(12,3)`.
-* **Harga server-side**: semua nominal order dihitung ulang di `src/lib/pricing.ts` (dibuat 1.6) dari `basePrice` + `priceDelta` di database; jangan percaya harga dari browser.
-* **Naming DB**: tabel `@@map` ke `snake_case` plural; enum type `@@map` ke snake_case; kolom tetap camelCase. Akses hanya via Prisma.
-* **MenuItem.modifierGroups ↔ ModifierGroup.menuItems** memakai **implicit many-to-many** (tabel join otomatis `_MenuItemToModifierGroup`) — jangan membuat model join manual.
-* **`tags String[]`** (Postgres array) untuk filter dietary pelanggan (`PEDAS`, `BARU`, `VEGAN`, dst). `isBestSeller` tetap kolom terpisah.
-* **Jadwal tayang** disimpan sebagai string `"HH:mm"` di `availableFrom`/`availableUntil` (`VarChar(5)`); validasi format & konversi ke menit dilakukan di API katalog (2.2), bukan di DB.
-* **PIN meja** (`Table.currentPin`) & **PIN staf** (`Staff.pinHash`, nanti) disimpan sebagai hash HMAC-SHA256 + `SESSION_SECRET` — tidak pernah plaintext.
-* **`TableSession.sessionTokenHash`** unik; token mentah hanya di cookie httpOnly. Satu sesi `ACTIVE` per meja dijaga di layer aplikasi (2.1).
-* **Sandbox**: `npm install` wajib `--ignore-scripts` (spawn ber-pipe EPERM); cache npm di `./.npm-cache`. `next/font/google` tidak bisa dipakai (font via `<link>` + fallback `--font-sans`).
-* **Tema**: `:root` Customer Warm Light, `.dark` POS/KDS Slate Dark. `min-h-touch` = 56px (POS/KDS), `min-h-12` = 48px (pelanggan). Angka wajib `tabular-nums`.
-* **Belum ada**: `src/lib/db.ts`, `src/lib/pricing.ts` (1.6), `prisma/seed.ts` (1.5), migrasi ter-apply (lihat §3.7), `src/components/`, `src/store/`, `src/types/`.
+* **Model `Staff` adalah tambahan wajib** (tidak eksplisit di `CONTEXT.md` §4, tetapi diwajibkan oleh sub-tugas 1.5 yang men-*seed* akun Admin/Kasir/Dapur dan oleh relasi kasir pada `Payment`/`CashierShift`). Jangan dihapus.
+* **Mata uang = Rupiah bulat (`Int`)**. Stok bahan `Decimal(12,3)`. Semua nominal order (`subtotal`, `discountAmount`, `serviceCharge`, `taxAmount`, `uniqueCode`, `grandTotal`, `amountPaid`, `changeAmount`) `Int`.
+* **`orderNumber` unik** berformat `ORD-1024` (tanpa `#` di DB; `#` hanya di UI). Generator nomor urut dibuat di 4.1.
+* **Status awal order**: `PENDING_PAYMENT` (QRIS/VA) atau `WAITING_CASHIER_APPROVAL` (bayar di kasir) — lihat `1.4`/`2.1`.
+* **Snapshot pada OrderItem**: `menuName`, `station`, `unitPrice`, `modifierTotal`, `modifiers Json` disalin saat pesanan dibuat supaya riwayat tidak berubah saat menu diedit.
+* **Relasi**: `Order.tableSessionId` nullable (TAKEAWAY/walk-in). `Payment.gatewayRefId` unik (anti double-webhook). `OrderItem.menuItemId` `SetNull` agar riwayat aman saat menu dihapus.
+* **Migrasi belum ter-apply**: PostgreSQL lokal tidak tersedia (port 5432 tertutup). SQL init sudah di-commit; jalankan `npx prisma migrate deploy` saat `DATABASE_URL` siap. **Jangan** mengedit `migration.sql` init — perubahan schema berikutnya membuat migrasi baru.
+* **Penamaan DB**: tabel `snake_case` plural (`orders`, `order_items`, `payments`, `cashier_shifts`, `cash_drawer_logs`, `waiter_calls`, `staff`, dst); enum type `snake_case`; kolom camelCase.
+* **PIN & token** selalu disimpan sebagai hash HMAC-SHA256 + `SESSION_SECRET` (`Table.currentPin`, `Staff.pinHash`). Belum ada helper terpusat — dibuat di 1.5 (`src/lib/security/pin.ts`).
+* **Sandbox**: `npm install` wajib `--ignore-scripts` (spawn ber-pipe EPERM); cache npm `./.npm-cache`. `next/font/google` tidak bisa dipakai (font via `<link>` + fallback `--font-sans`).
+* **Tema**: `:root` Customer Warm Light, `.dark` POS/KDS Slate Dark. `min-h-touch` 56px (POS/KDS), `min-h-12` 48px (pelanggan). Angka wajib `tabular-nums`.
+* **Belum ada**: `src/lib/db.ts`, `src/lib/pricing.ts` (1.6), `src/components/`, `src/store/`, `src/types/`.
 * **Memory files** ada di root repo **dan** `C:\Users\Firman Ardiansyah\Downloads\` — perbarui keduanya setiap sesi.
 
 ## 5. Riwayat Log Estafet (Chronological Relay History)
 * **[Sesi #0 — Inisialisasi Arsitektur]**: Perencanaan sistem FnB menyeluruh + 3 file memori eksternal. Siap dieksekusi di `1.1`.
 * **[Sesi #1 — 2026-11-03 · 1.1 Setup Next.js]**: Scaffold Next.js 15.5.28 + TS strict + Tailwind 3.4.19 + token tema ganda + shadcn base. Lint/typecheck/build hijau, smoke test HTTP 200. Commit `5011a02`.
-* **[Sesi #1 — 2026-11-03 · 1.2 Schema Area/Meja/Sesi]**: `prisma/schema.prisma` + `.env`; model `Area`/`Table`/`TableSession`, enum status meja & sesi. `validate`/`format`/`generate` hijau. Commit `2dcd2b8`.
-* **[Sesi #1 — 2026-11-03 · 1.3 Schema Katalog Menu & Resep]**: Menambahkan 3 enum + 6 model (`Category`, `MenuItem`, `ModifierGroup`, `ModifierOption`, `Ingredient`, `MenuRecipe`) dengan m2m implisit modifier, `tags String[]`, jadwal tayang `HH:mm`, dan resep `Decimal(12,3)`. `validate`/`format`/`generate` hijau; diff SQL dari empty schema berhasil digenerate (275 baris) sebagai bukti schema dapat dimigrasikan.
+* **[Sesi #1 — 2026-11-03 · 1.2 Schema Area/Meja/Sesi]**: `prisma/schema.prisma` + `.env`; model `Area`/`Table`/`TableSession`, enum status meja & sesi. Commit `2dcd2b8`.
+* **[Sesi #1 — 2026-11-03 · 1.3 Schema Katalog Menu & Resep]**: 3 enum + 6 model katalog; m2m implisit modifier, `tags String[]`, jadwal tayang `HH:mm`, resep `Decimal(12,3)`. Commit `cb77c24`.
+* **[Sesi #1 — 2026-11-03 · 1.4 Schema Order/Payment/Shift/Call Waiter]**: Menambahkan `Staff` (pendukung seed & relasi kasir), 10 enum operasional, dan 7 model transaksional lengkap dengan relasi balik; menghasilkan migrasi init SQL 529 baris (17 tabel) tanpa apply karena tidak ada PostgreSQL. Commit menyusul.
