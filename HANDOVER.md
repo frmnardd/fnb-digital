@@ -6,57 +6,58 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 3 — Antarmuka Halaman Pelanggan (Mobile-First)` (1/6 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `3.1 Header Meja & Quick Action Bar` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `3.2 Navigasi Kategori Sticky & Pencarian Instan`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (54 test) ✔, `typecheck` ✔, `lint` ✔, `build` ✔. Route: `/t/[tableSlug]` (ƒ, 162 kB First Load JS), 3 API (ƒ).
-* **Smoke test 3.1**: `GET /t/meja-01` → **HTTP 200** menampilkan empty state "Sistem belum siap" (karena DB belum ada); `GET /t/BAD%20SLUG` → HTTP 200 "Meja tidak ditemukan". Tidak ada 500.
+* **Fase Aktif**: `Fase 3 — Antarmuka Halaman Pelanggan (Mobile-First)` (2/6 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `3.2 Navigasi Kategori Sticky & Pencarian Instan` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `3.3 Katalog Kartu Menu (MenuCard)`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**67 test**, 21 suite) ✔, `typecheck` ✔, `lint` (0 warning) ✔, `build` ✔. Route: `/t/[tableSlug]` (ƒ, 165 kB) + 3 API (ƒ).
+* **Verifikasi UI dengan data (tanpa DB)**: komponen dirender via `renderToStaticMarkup` + fixture → header (meja/area/badge sesi/switcher/pelayan) & MenuBrowser (input search, chip filter, tab kategori, section, harga `Rp 38.000`, badge "Habis", hitungan "3 menu tersedia") semuanya LOLOS. Skrip sementara sudah dihapus.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 10 dari 31 sub-tugas selesai.
+* **Progress**: 11 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/components/ui/button.tsx` | **Baru** — `Button` + `buttonVariants` (cva): varian default/secondary/outline/ghost/destructive/success, size sm/default(48px)/lg(56px)/icon |
-| `src/components/ui/bottom-sheet.tsx` | **Baru** — bottom sheet tanpa Radix: `createPortal` + Framer Motion, backdrop/Esc/X, kunci scroll body, `role="dialog"` |
-| `src/lib/services/customer-table.ts` | **Baru** — `getCustomerTableContext(qrSlug, sessionToken)` → meja + sesi aktif + `isOwner` (verifikasi cookie) |
-| `src/app/(customer)/layout.tsx` | **Baru** — tema terang, `min-h-dvh bg-background` |
-| `src/app/(customer)/t/[tableSlug]/page.tsx` | **Baru** — server component: header + kartu sesi/CTA mulai sesi + placeholder katalog; fallback "Meja tidak ditemukan" (slug invalid) vs "Sistem belum siap" (DB error), keduanya HTTP 200 |
-| `src/components/customer/CustomerHeader.tsx` | **Baru** — identitas restoran, nomor meja + area, badge status sesi, switcher Dine In/Takeaway (≥48px), tombol Panggil Pelayan |
-| `src/components/customer/CallWaiterSheet.tsx` | **Baru** — 4 aksi panggilan + catatan 160 char, POST ke call-waiter, tangani 201/409/429 (hitung mundur `retryAfterSeconds` + tombol disabled) |
-| `src/components/customer/StartSessionButton.tsx` | **Baru** — POST `/api/tables/[slug]/session` lalu `router.refresh()` |
-| `src/lib/security/token.ts` | Tambah konstanta `TABLE_SESSION_COOKIE = "fnb_table_session"` |
-| `TODO.md` | `3.1` ditandai `[x]` |
+| `src/types/menu.ts` | **Baru** — tipe publik `PublicMenuItem`/`PublicModifierGroup`/`PublicCategory`/`PublicMenuCatalog` (tanpa `costPrice`) |
+| `src/lib/menu-select.ts` | **Baru** — `select` Prisma bersama (`modifierOptionSelect`, `modifierGroupSelect`, `menuItemSelect`, `categorySelect`) + tipe `CategoryWithItems` |
+| `src/lib/menu-mapper.ts` | **Baru** — `toPublicCategory()` (hitung `isOrderable` server-side) |
+| `src/lib/services/customer-menu.ts` | **Baru** — `getCustomerMenuCatalog({ categorySlug? })` dipakai server component **dan** route API |
+| `src/app/api/menu/route.ts` | **Diperbarui** — memakai service (payload identik), tetap validasi `?category` |
+| `src/lib/menu-filter.ts` | **Baru** — `DIETARY_FILTERS`, `filterMenuItems`, `filterCategories`, `countMatchingItems` |
+| `src/lib/menu-filter.test.ts` | **Baru** — 13 test (pencarian nama/deskripsi/kosong/tanpa hasil, filter Best Seller/Pedas/Baru, kombinasi AND, kategori kosong dibuang, tanpa mutasi, hitungan) |
+| `src/lib/constants.ts` | **Baru** — `CUSTOMER_HEADER_OFFSET_PX = 125` (offset sticky tabs) |
+| `src/components/customer/CategoryTabs.tsx` | **Baru** — tab sticky (`top` = offset header), `IntersectionObserver`, smooth scroll, `aria-current` |
+| `src/components/customer/MenuCard.tsx` | **Baru** — kartu ringkas: thumbnail 96px, badge Habis (grayscale), Best Seller, tag Pedas/Baru, harga `formatRupiah`, estimasi menit |
+| `src/components/customer/MenuBrowser.tsx` | **Baru** — search instan + clear, chip filter multi-pilih, CategoryTabs, hitungan hasil, empty state + reset, section `id="kategori-<slug>"` dengan `scroll-mt` |
+| `src/app/(customer)/t/[tableSlug]/page.tsx` | **Diperbarui** — memuat katalog menu (dengan `try/catch`) dan merender `MenuBrowser`; fallback "Menu belum tersedia" |
+| `TODO.md` | `3.2` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`3.2 Navigasi Kategori Sticky & Pencarian Instan`**, ubah menjadi `[/]`.
-2. **Buat `src/lib/services/customer-menu.ts`** (server): `getCustomerMenuCatalog()` mengembalikan bentuk yang sama dengan `GET /api/menu` (kategori → item aktif → modifier groups), **tanpa `costPrice`**, plus `isOrderable` dihitung via `isMenuItemOrderable()` dari `src/lib/menu.ts`. Gunakan `select` eksplisit seperti route `/api/menu` (boleh ekstrak konstanta `select` bersama ke `src/lib/menu-select.ts` agar tidak duplikat).
-3. **Buat `src/lib/menu-filter.ts`** (pure + unit test `src/lib/menu-filter.test.ts`):
-   * `type DietaryFilter = "BEST_SELLER" | "PEDAS" | "BARU"`.
-   * `filterMenuItems(items, { search, dietaryFilters })` — pencarian case-insensitive pada `name`/`description`, filter dietary berbasis `isBestSeller` dan `tags` (`PEDAS`, `BARU`), mengembalikan item yang cocok.
-   * `filterCategories(categories, ...)` — pertahankan hanya kategori yang masih punya item setelah filter; sediakan `countMatchingItems`.
-   * Uji: pencarian sebagian nama, deskripsi, tanpa hasil, kombinasi filter, kategori kosong tersembunyi.
-4. **Buat `src/components/customer/MenuBrowser.tsx`** (`"use client"`) yang menerima `categories` dari server component:
-   * Bilah pencarian instan (input `type="search"`, ikon `Search`, tombol clear `X`, `aria-label`), state `search` + `dietaryFilters: Set<DietaryFilter>` via `useState`, hasil di-`useMemo` memakai `filterMenuItems`.
-   * Chip filter *Best Seller* / *Pedas* / *Baru* (target ≥ 40px, `aria-pressed`), dapat multi-pilih.
-   * `CategoryTabs` sticky di bawah header: `top-[…]` harus disesuaikan dengan tinggi header (ukur dulu; header `CustomerHeader` ± 120px → gunakan konstanta `CUSTOMER_HEADER_OFFSET` di `src/lib/constants.ts` dan dokumentasikan). Tab horizontal scroll (`overflow-x-auto no-scrollbar`), state aktif memakai `IntersectionObserver` pada `<section id="kategori-<slug>">`, klik tab → `scrollIntoView({ behavior: "smooth", block: "start" })`.
-   * Empty state bila filter tidak menemukan menu ("Menu tidak ditemukan").
-   * Render daftar item sederhana dulu (nama, harga via `formatRupiah`, badge `isAvailable`/`isOrderable`); kartu menu penuh dibuat di 3.3 — pisahkan komponen `MenuCard` agar mudah diganti.
-5. **Integrasikan ke `src/app/(customer)/t/[tableSlug]/page.tsx`**: ganti placeholder "Katalog menu akan tampil..." dengan `<MenuBrowser categories={...} />`; muat data menu dalam `try/catch` yang sama (bila DB gagal, tetap tampilkan fallback yang sudah ada). Jangan memanggil HTTP ke `/api/menu` dari server component.
-6. **Verifikasi**: `npm test` (test filter baru), `typecheck`, `lint`, `build`, lalu smoke test `npx next start -p <port>` + `GET /t/meja-01` (tanpa DB harus tetap 200).
-7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `3.3 Katalog Kartu Menu (MenuCard)`), `git commit` (`feat(customer): add sticky category tabs, instant search, and dietary filters`), push.
+1. Ambil **`3.3 Katalog Kartu Menu (MenuCard)`**, ubah menjadi `[/]`.
+2. **Buat helper label ketersediaan** di `src/lib/menu.ts` (pure + test di `src/lib/menu.test.ts`):
+   * `getOrderabilityLabel(item: { isAvailable: boolean; isOrderable: boolean }): "TERSEDIA" | "HABIS" | "DI_LUAR_JAM"` (habis diprioritaskan; `isOrderable=false` + stok ada → `DI_LUAR_JAM`).
+   * `getOrderabilityText(label)` → teks UI Indonesia ("Habis", "Di luar jam tayang", "Tersedia").
+3. **Perbarui `src/components/customer/MenuCard.tsx`**:
+   * Thumbnail **rasio 1:1** (`aspect-square`), ukuran tetap ± `w-[104px]`; `object-cover`; `loading="lazy"`; grayscale + overlay "Habis" bila `!isAvailable`. Boleh tetap `<img>` (host foto belum tentu terdaftar di `next.config.ts`; pertahankan komentar `eslint-disable-next-line`).
+   * Ribbon "Best Seller", chip tag (`PEDAS`, `BARU`), estimasi waktu saji.
+   * Harga memakai `formatRupiah` + class `tabular-nums`.
+   * **Badge kuantitas keranjang** di pojok thumbnail (lingkaran primary) bila `quantityInCart > 0`.
+   * Tombol tambah 48×48 (`size="icon"`, ikon `Plus`) di kanan bawah kartu, `aria-label={`Tambah ${item.name} ke keranjang`}`; disabled + label "Habis"/"Tutup" saat `!isOrderable`.
+   * Props: `{ item: PublicMenuItem; quantityInCart?: number; onAdd?: (item: PublicMenuItem) => void }`.
+4. **`MenuBrowser`**: tambahkan state sementara `quantities: Record<string, number>` (increment pada `onAdd`) dan teruskan `quantityInCart`. **Beri komentar jelas** bahwa state ini SEMENTARA dan akan diganti Zustand cart store pada sub-tugas 3.5 — jangan membuat store sekarang.
+5. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`. Untuk memastikan markup kartu benar, pola yang sudah terbukti: render `MenuCard`/`MenuBrowser` via `renderToStaticMarkup` dengan fixture **di skrip sementara** (ingat: butuh `tsconfig` sementara dengan `"jsx": "react-jsx"` dan **hapus file sementara sebelum commit**).
+6. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `3.4 Bottom Sheet Kustomisasi Menu (ModifierSheet)`), `git commit` (`feat(customer): polish menu card with availability states and cart badge`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Sticky header**: `CustomerHeader` sudah `sticky top-0 z-30`; elemen sticky berikutnya harus memakai offset tinggi header agar tidak tertutup. Ukur dan simpan sebagai konstanta bersama.
-* **Data menu**: server component memuat langsung dari DB (bukan fetch HTTP internal). Respons API `/api/menu` dan service harus konsisten (idealnya berbagi konstanta `select`).
+* **Katalog menu satu jalur**: `getCustomerMenuCatalog()` dipakai server component & `GET /api/menu`; `select` Prisma terpusat di `menu-select.ts`. Jangan menduplikasi query.
+* **Sticky offset**: `CUSTOMER_HEADER_OFFSET_PX = 125` (hitung dari kelas header). Bila `CustomerHeader` berubah tinggi, perbarui konstanta ini; section memakai `scroll-mt-[190px]` (header + tabs).
+* **Filter**: `MenuBrowser` memfilter di client (instan, tanpa request). Aturan: pencarian di `name`+`description` (case-insensitive), filter dietary **AND**, kategori kosong dibuang.
 * **Rahasia**: `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`, stok bahan — jangan pernah ke klien.
 * **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; urutan validasi env → slug/query → body → DB.
-* **Rate limit call waiter**: 2 menit per meja, disimpan di DB; 429 menyertakan `Retry-After` + `details.retryAfterSeconds`.
+* **Jangan menambah dependency baru** (Radix/Vitest/toast). Tersedia: framer-motion, lucide-react, cva, clsx, tailwind-merge, zustand (**belum dipakai**).
+* **State**: `orderMode` masih `useState` di `CustomerHeader`; keranjang belum ada — akan dibuat di 3.5 (Zustand + persist).
 * **Pricing**: `src/lib/pricing.ts` (`formatRupiah`, `calculateOrderTotals`) — jangan menulis ulang rumus.
-* **Jangan menambah dependency baru** (Radix/Vitest/toast) tanpa persetujuan. Sudah tersedia: framer-motion, lucide-react, cva, clsx, tailwind-merge, zustand (belum dipakai).
-* **State**: `orderMode` di `CustomerHeader` masih `useState` lokal — akan dipindah ke Zustand store pada 3.5 (keranjang & sinkronisasi group order).
-* **Seeder**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
+* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
 * **Tema**: `:root` Customer Warm Light (`#FAF8F5`, primary `#D9381E`), `.dark` POS/KDS Slate Dark; target sentuh pelanggan ≥ 48px, POS/KDS 56px; angka wajib `tabular-nums`.
@@ -73,4 +74,5 @@
 * **[Sesi #1 — 2026-11-03 · 2.1 Sesi QR Meja]**: `db.ts`, `env.ts`, `security/token.ts`, `api/errors.ts`, route session. Commit `f5ce4e3`.
 * **[Sesi #1 — 2026-11-03 · 2.2 Katalog Menu Publik]**: `menu.ts` + 13 test, route `GET /api/menu`. Commit `2c7e45e`.
 * **[Sesi #1 — 2026-11-03 · 2.3 Call Waiter]**: `waiter-call.ts` + 9 test, `api/request.ts`, route call-waiter. Fase 2 tuntas. Commit `f0913e1`.
-* **[Sesi #1 — 2026-11-03 · 3.1 Header Meja]**: Fondasi UI (`button`, `bottom-sheet`), service `customer-table`, layout & halaman `/t/[tableSlug]`, `CustomerHeader` (switcher mode + badge sesi), `CallWaiterSheet` (states 201/409/429 + hitung mundur), `StartSessionButton`. Smoke test: slug valid tanpa DB → 200 "Sistem belum siap"; slug invalid → 200 "Meja tidak ditemukan". Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 3.1 Header Meja]**: Fondasi UI + `CustomerHeader` + `CallWaiterSheet` + `StartSessionButton` + halaman `/t/[tableSlug]`. Commit `3e4faee`.
+* **[Sesi #1 — 2026-11-03 · 3.2 Kategori & Pencarian]**: tipe & select menu bersama, service katalog (dipakai API + server component), `menu-filter.ts` (+13 test), `CategoryTabs` sticky + IntersectionObserver, `MenuBrowser` (search/chip/empty state), `MenuCard` awal. Verifikasi render dengan fixture lolos semua assertion. Commit menyusul.

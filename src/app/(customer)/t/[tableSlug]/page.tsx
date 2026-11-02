@@ -1,12 +1,15 @@
-import { CircleAlert, QrCode, Users, Utensils } from "lucide-react";
+import { CircleAlert, QrCode, Users } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { CustomerHeader } from "@/components/customer/CustomerHeader";
+import { MenuBrowser } from "@/components/customer/MenuBrowser";
 import { StartSessionButton } from "@/components/customer/StartSessionButton";
 import { ApiError } from "@/lib/api/errors";
 import { TABLE_SESSION_COOKIE } from "@/lib/security/token";
+import { getCustomerMenuCatalog } from "@/lib/services/customer-menu";
 import { getCustomerTableContext, type CustomerTableContext } from "@/lib/services/customer-table";
+import type { PublicCategory } from "@/types/menu";
 
 /**
  * Halaman pelanggan per meja: /t/[tableSlug]
@@ -41,6 +44,7 @@ export default async function CustomerTablePage({
   }
 
   const { table, session } = context;
+  const menuCategories = await loadMenuCategories();
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
@@ -75,19 +79,30 @@ export default async function CustomerTablePage({
           </section>
         )}
 
-        <section className="flex flex-col gap-1.5 rounded-xl border border-dashed bg-card/60 p-4">
-          <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            <Utensils className="size-4" aria-hidden />
-            Katalog menu
-          </span>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Tab kategori, pencarian instan, dan kartu menu akan tampil pada langkah
-            berikutnya (sub-tugas 3.2 &amp; 3.3).
-          </p>
-        </section>
+        {menuCategories.length > 0 ? (
+          <MenuBrowser categories={menuCategories} />
+        ) : (
+          <section className="flex flex-col gap-1 rounded-xl border border-dashed bg-card/60 p-4">
+            <p className="text-sm font-extrabold">Menu belum tersedia</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Katalog sedang dimuat atau belum diisi dari back-office. Coba muat ulang
+              halaman beberapa saat lagi.
+            </p>
+          </section>
+        )}
       </main>
     </div>
   );
+}
+
+/** Memuat katalog menu; kegagalan DB tidak boleh menjatuhkan halaman. */
+async function loadMenuCategories(): Promise<PublicCategory[]> {
+  try {
+    const catalog = await getCustomerMenuCatalog();
+    return catalog.categories;
+  } catch {
+    return [];
+  }
 }
 
 function TableUnavailableState({
