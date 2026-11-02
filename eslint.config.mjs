@@ -1,0 +1,23 @@
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { FlatCompat } from "@eslint/eslintrc";
+
+const compat = new FlatCompat({
+  baseDirectory: dirname(fileURLToPath(import.meta.url)),
+});
+
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    ignores: [".next/**", "node_modules/**", "next-env.d.ts", "prisma/migrations/**"],
+  },
+  {
+    rules: {
+      // App Router: stylesheet font dimuat sekali di root layout, bukan pages/_document.
+      "@next/next/no-page-custom-font": "off",
+    },
+  },
+];
+
+export default eslintConfig;

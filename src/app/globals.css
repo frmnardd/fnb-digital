@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * =============================================================================
+ * DESIGN TOKENS — Sistem Website FnB (CONTEXT.md §5)
+ * -----------------------------------------------------------------------------
+ * :root  -> Tema PELANGGAN "Warm Alabaster" (terang, hangat, apetitif)
+ * .dark  -> Tema POS KASIR & KDS "Slate Dark" (kontras tinggi, 12 jam nonstop)
+ *
+ * Semua nilai warna memakai format HSL tanpa pembungkus `hsl()` agar dapat
+ * dikonsumsi Tailwind (`hsl(var(--token))`) sekaligus mendukung opacity utility.
+ * =============================================================================
+ */
+
+@layer base {
+  :root {
+    /* --- Permukaan pelanggan (Warm Light) --- */
+    --background: 36 33% 97%; /* #FAF8F5 Warm Alabaster */
+    --foreground: 24 10% 10%; /* #1C1917 */
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 24 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 10% 10%;
+
+    /* --- Aksen utama pelanggan --- */
+    --primary: 8 76% 48%; /* #D9381E Terracotta Red */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 20% 94%; /* #F5F1EC */
+    --secondary-foreground: 24 10% 10%;
+    --muted: 30 20% 94%;
+    --muted-foreground: 25 5% 45%; /* #78716C */
+    --accent: 21 90% 48%; /* #EA580C Burnt Orange */
+    --accent-foreground: 0 0% 100%;
+
+    /* --- Status operasional (dipakai lintas modul) --- */
+    --success: 160 84% 39%; /* #10B981 Lunas / Siap */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 91% 50%; /* #F59E0B Menunggu / Warning SLA */
+    --warning-foreground: 24 10% 10%;
+    --danger: 0 84% 60%; /* #EF4444 Overdue / Void */
+    --danger-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* --- Garis & focus --- */
+    --border: 30 7% 90%; /* #E7E5E4 */
+    --input: 30 7% 90%;
+    --ring: 8 76% 48%;
+
+    /* --- Token merek eksplisit --- */
+    --brand-terracotta: 8 76% 48%;
+    --brand-orange: 21 90% 48%;
+    --brand-cream: 36 33% 97%;
+
+    /* --- Tipografi (CONTEXT §5.2): Plus Jakarta Sans + fallback sistem --- */
+    --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    /* --- Radius kartu pelanggan (lembut, sentuhan hangat) --- */
+    --radius: 1rem;
+  }
+
+  .dark {
+    /* --- Permukaan POS & KDS (Slate Dark) --- */
+    --background: 222 47% 11%; /* #0F172A */
+    --foreground: 210 40% 98%; /* #F8FAFC */
+    --card: 217 33% 17%; /* #1E293B */
+    --card-foreground: 210 40% 98%;
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    /* --- Aksi utama = konfirmasi/pelunasan --- */
+    --primary: 160 84% 39%; /* #10B981 */
+    --primary-foreground: 222 47% 11%;
+    --secondary: 215 25% 27%; /* #334155 */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 25% 27%;
+    --muted-foreground: 215 20% 65%; /* #94A3B8 */
+    --accent: 217 33% 22%;
+    --accent-foreground: 210 40% 98%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 222 47% 11%;
+    --warning: 38 91% 50%;
+    --warning-foreground: 222 47% 11%;
+    --danger: 0 84% 60%;
+    --danger-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 25% 27%;
+    --input: 215 25% 27%;
+    --ring: 160 84% 39%;
+
+    --brand-terracotta: 8 76% 48%;
+    --brand-orange: 21 90% 48%;
+    --brand-cream: 36 33% 97%;
+
+    /* Permukaan eksplisit untuk panel POS/KDS bertingkat */
+    --pos-bg: 222 47% 11%;
+    --pos-surface: 217 33% 17%;
+    --pos-elevated: 215 25% 27%;
+
+    /* Layar kasir/KDS lebih rapat & tegas */
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Angka monospaced-width untuk harga, kuantitas, dan timer (CONTEXT §5.2). */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+@layer utilities {
+  /* Sembunyikan scrollbar horizontal pada tab kategori pelanggan. */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Ruang aman bawah untuk Floating Cart Bar (thumb zone iOS). */
+  .safe-area-pb {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+}
