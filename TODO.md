@@ -15,7 +15,7 @@
 
 ## Fase 2: Modul Keamanan Sesi QR Meja & API Pelanggan
 - [x] **2.1 Validasi QR Meja & Sesi (`GET/POST /api/tables/[qrSlug]/session`)**: Buat endpoint untuk memvalidasi scan QR meja, membuka atau bergabung ke `TableSession` aktif, serta menerbitkan token sesi meja.
-- [ ] **2.2 API Katalog Menu Publik (`GET /api/menu`)**: Buat endpoint cepat untuk mengambil daftar kategori, menu aktif, status stok (*86'd*), dan grup *modifier* yang relevan berdasarkan jam operasional.
+- [x] **2.2 API Katalog Menu Publik (`GET /api/menu`)**: Buat endpoint cepat untuk mengambil daftar kategori, menu aktif, status stok (*86'd*), dan grup *modifier* yang relevan berdasarkan jam operasional.
 - [ ] **2.3 API Call Waiter (`POST /api/tables/[qrSlug]/call-waiter`)**: Buat endpoint panggilan pelayan dari meja (*Minta Air/Tisu*, *Bersihkan Meja*, *Tanya Menu*, *Minta Bill*) dengan *rate-limit* anti-spam (maksimal 1 panggilan per 2 menit per meja).
 
 ## Fase 3: Antarmuka Halaman Pelanggan (Customer Web App — Mobile-First)
