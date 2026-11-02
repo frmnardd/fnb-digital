@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { getSessionSecret } from "./secret";
+
 /**
  * Helper hashing PIN (meja 4-digit & PIN otorisasi staf 6-digit).
  *
@@ -13,22 +15,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 const PIN_PATTERN = /^\d{4,8}$/;
 
-function getSecret(): string {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 16) {
-    throw new Error(
-      "SESSION_SECRET belum diatur (minimal 16 karakter). Periksa file .env sebelum menjalankan seeding.",
-    );
-  }
-  return secret;
-}
-
 /** Hash PIN menjadi 64 karakter hex (HMAC-SHA256). Melempar error bila PIN tidak valid. */
 export function hashPin(pin: string): string {
   if (!PIN_PATTERN.test(pin)) {
     throw new Error("PIN harus berupa 4-8 digit angka.");
   }
-  return createHmac("sha256", getSecret()).update(`fnb-pin:${pin}`).digest("hex");
+  return createHmac("sha256", getSessionSecret()).update(`fnb-pin:${pin}`).digest("hex");
 }
 
 /** Membandingkan PIN dengan hash tersimpan secara constant-time (anti timing attack). */
