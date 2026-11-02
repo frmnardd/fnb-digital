@@ -1,0 +1,147 @@
+// =============================================================================
+// Prisma Schema — Sistem Website FnB Digital
+// -----------------------------------------------------------------------------
+// Blueprint: CONTEXT.md §4. File ini ditumbuhkan BERTAHAP per sub-tugas:
+//   1.2 -> Area, Table, TableSession               (sub-tugas ini)
+//   1.3 -> Category, MenuItem, ModifierGroup, ModifierOption, Ingredient, MenuRecipe
+//   1.4 -> Order, OrderItem, Payment, CashierShift, CashDrawerLog, WaiterCall
+// Jangan mengubah nama model/enum yang sudah ada tanpa persetujuan pengguna.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUM — Status meja & sesi meja
+// -----------------------------------------------------------------------------
+
+/// Status operasional meja pada denah restoran (POS floor plan).
+enum TableStatus {
+  AVAILABLE /// Meja kosong & siap ditempati
+  OCCUPIED /// Ada TableSession aktif
+  NEEDS_CLEANING /// Menunggu dibersihkan oleh runner
+
+  @@map("table_status")
+}
+
+/// Siklus hidup satu kunjungan pelanggan pada satu meja (mendukung Open Bill).
+enum TableSessionStatus {
+  ACTIVE /// Sesi berjalan, pelanggan masih bisa memesan
+  BILL_REQUESTED /// Pelanggan meminta bill, pesanan baru ditahan
+  CLOSED /// Sesi selesai & sudah dibayar
+
+  @@map("table_session_status")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Area / Lantai
+// -----------------------------------------------------------------------------
+
+/// Lantai atau zona restoran (Indoor, Outdoor, VIP, dsb).
+model Area {
+  id          String  @id @default(cuid())
+  name        String
+  /// Segmen URL stabil, contoh: "indoor", "outdoor-lantai-2".
+  slug        String  @unique
+  /// Nomor lantai untuk pengelompokan denah di layar kasir.
+  floor       Int     @default(1)
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tables Table[]
+
+  @@index([floor])
+  @@index([isActive])
+  @@map("areas")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Meja
+// -----------------------------------------------------------------------------
+
+/// Meja fisik yang memiliki QR code unik untuk pemesanan mandiri pelanggan.
+model Table {
+  id     String @id @default(cuid())
+  areaId String
+
+  /// Label yang dilihat tamu, contoh: "07", "A-12", "VIP-2".
+  tableNumber String
+  /// Slug unik pada URL pelanggan: /t/[tableSlug] — dicetak menjadi QR.
+  qrSlug      String @unique
+  /// Kapasitas kursi, dipakai untuk saran gabung meja.
+  capacity    Int    @default(4)
+
+  status TableStatus @default(AVAILABLE)
+
+  /// PIN 4-digit opsional untuk mengesahkan pembayaran tunai di kasir.
+  /// NILAI DISIMPAN SEBAGAI HASH (HMAC-SHA256 + SESSION_SECRET), bukan plaintext.
+  currentPin String?
+  /// Apakah PIN diwajibkan untuk sesi meja ini (anti-prank order tunai).
+  pinEnabled Boolean @default(false)
+
+  /// Koordinat opsional untuk denah meja interaktif POS (grid x/y).
+  positionX Int?
+  positionY Int?
+
+  notes    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  area     Area           @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sessions TableSession[]
+
+  /// Satu nomor meja tidak boleh duplikat di dalam area yang sama.
+  @@unique([areaId, tableNumber])
+  @@index([status])
+  @@index([areaId, isActive])
+  @@map("tables")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Sesi Meja
+// -----------------------------------------------------------------------------
+
+/// Satu kunjungan pelanggan di satu meja. Menjadi induk banyak Order (Open Bill).
+model TableSession {
+  id      String             @id @default(cuid())
+  tableId String
+  status  TableSessionStatus @default(ACTIVE)
+
+  /// Jumlah tamu pada sesi ini (default 1).
+  guestCount    Int     @default(1)
+  /// Nama pemesan pertama (opsional, untuk sapaan & struk).
+  customerName  String?
+  /// Nomor WhatsApp opsional untuk e-struk / notifikasi kesiapan pesanan.
+  customerPhone String?
+
+  /// SHA-256 (atau HMAC) dari TableSessionToken yang dipegang browser pelanggan.
+  /// Token mentah TIDAK pernah disimpan di database.
+  sessionTokenHash String @unique
+
+  openedAt       DateTime  @default(now())
+  lastActivityAt DateTime  @default(now())
+  closedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  /// Relasi `orders Order[]` ditambahkan pada sub-tugas 1.4 (model Order belum ada).
+  @@index([tableId, status])
+  @@index([status, openedAt])
+  @@index([lastActivityAt])
+  @@map("table_sessions")
+}

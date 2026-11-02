@@ -7,7 +7,7 @@
 
 ## Fase 1: Inisialisasi Proyek, Skema Database, & Utilitas Inti
 - [x] **1.1 Setup Next.js & Konfigurasi Dasar**: Inisialisasi proyek Next.js (App Router, TypeScript, Tailwind CSS, `shadcn/ui`, Lucide Icons, Zustand) dan atur palet warna CSS variables untuk tema *Customer (Warm Light)* serta *POS/KDS (Slate Dark)* di `globals.css`.
-- [ ] **1.2 Skema Prisma — Area, Meja, & Sesi Meja**: Buat model `Area`, `Table`, dan `TableSession` di `prisma/schema.prisma` (mendukung QR Slug unik, PIN meja 4-digit, dan status meja).
+- [x] **1.2 Skema Prisma — Area, Meja, & Sesi Meja**: Buat model `Area`, `Table`, dan `TableSession` di `prisma/schema.prisma` (mendukung QR Slug unik, PIN meja 4-digit, dan status meja).
 - [ ] **1.3 Skema Prisma — Katalog Menu, Modifiers, & Resep**: Buat model `Category`, `MenuItem`, `ModifierGroup`, `ModifierOption`, `Ingredient`, dan `MenuRecipe` di `prisma/schema.prisma`.
 - [ ] **1.4 Skema Prisma — Order, Payment, Shift Kasir, & Call Waiter**: Buat model `Order`, `OrderItem`, `Payment`, `CashierShift`, `CashDrawerLog`, dan `WaiterCall` beserta seluruh `enum` statusnya, lalu jalankan migrasi awal.
 - [ ] **1.5 Database Seeder (`prisma/seed.ts`)**: Buat *script* data awal berisi 2 area (Indoor & Outdoor), 10 meja dengan QR slug, 4 kategori menu, 12 menu FnB lengkap dengan *Modifier Groups* (Level Pedas, Ukuran, Topping, Level Gula), dan akun staf contoh (Admin, Kasir, Dapur).

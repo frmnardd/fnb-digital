@@ -7,52 +7,50 @@
 
 ## 1. Status Proyek Terkini (Current State)
 * **Fase Aktif**: `Fase 1 — Inisialisasi Proyek, Skema Database, & Utilitas Inti`
-* **Sub-Tugas Terakhir yang Selesai**: `1.1 Setup Next.js & Konfigurasi Dasar` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `1.2 Skema Prisma — Area, Meja, & Sesi Meja`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm run lint`, `npm run typecheck` (`tsc --noEmit`), dan `npm run build` semuanya exit `0`. Halaman `/` sudah diuji HTTP 200 via `next start`.
-* **Progress**: 1 dari 31 sub-tugas selesai.
+* **Sub-Tugas Terakhir yang Selesai**: `1.2 Skema Prisma — Area, Meja, & Sesi Meja` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `1.3 Skema Prisma — Katalog Menu, Modifiers, & Resep`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm run lint`, `npm run typecheck`, `npm run build` exit `0`. `npx prisma validate` ✔, `npx prisma format` ✔, `npx prisma generate` ✔ (Prisma Client 6.19.3).
+* **Progress**: 2 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `package.json` | Baru — Next 15.5.28, React 19.2.9, TS 5.9.3, Tailwind 3.4.19, Prisma 6.19.3, Zod 3.25.76, Zustand 5.0.16, lucide-react 0.577.0, framer-motion 12.43.0, clsx, tailwind-merge, class-variance-authority, tailwindcss-animate, tsx |
-| `tsconfig.json` | Baru — `strict: true`, alias `@/*` → `src/*`, plugin Next |
-| `next.config.ts` | Baru — `reactStrictMode`, `poweredByHeader: false`, `images.remotePatterns` (Supabase Storage & Unsplash), format `webp` |
-| `tailwind.config.ts` | Baru — `darkMode: ["class"]`, token `success/warning/danger/brand/pos`, `animation: blink-danger` (SLA KDS), `min-h/w-touch: 56px` |
-| `postcss.config.mjs` | Baru |
-| `eslint.config.mjs` | Baru — flat config (`next/core-web-vitals` + `next/typescript`), rule `no-page-custom-font` dimatikan untuk App Router |
-| `components.json` | Baru — konfigurasi shadcn/ui (style `new-york`, RSC, alias `@/components`) |
-| `src/app/globals.css` | Baru — **design token ganda**: `:root` (Customer Warm Light) & `.dark` (POS/KDS Slate Dark) + utility `.tabular`, `.no-scrollbar`, `.safe-area-pb` |
-| `src/app/layout.tsx` | Baru — root layout `lang="id"`, metadata & viewport PWA, stylesheet Plus Jakarta Sans |
-| `src/app/page.tsx` | Baru — halaman pemeriksaan visual token tema + peta 5 modul |
-| `src/lib/utils.ts` | Baru — helper `cn()` (clsx + tailwind-merge) standar shadcn |
-| `.env.example` | Baru — template `DATABASE_URL`, `SESSION_SECRET`, kredensial Midtrans, Supabase |
-| `.gitignore` | Baru — Next/Prisma/env + `/.npm-cache` |
-| `README.md` | Baru — ringkasan stack, perintah, tema, struktur folder |
-| `CONTEXT.md`, `TODO.md`, `HANDOVER.md` | Disalin ke root repo agar ikut versioned; `1.1` sudah ditandai `[x]` |
+| `prisma/schema.prisma` | **Baru** — `generator client` (`prisma-client-js`), `datasource db` (`postgresql`, `url`/`directUrl`), enum `TableStatus` & `TableSessionStatus`, model `Area`, `Table`, `TableSession` |
+| `.env` | **Baru (lokal, gitignored)** — `DATABASE_URL`, `DIRECT_URL`, `SESSION_SECRET`, kredensial dummy. Prisma CLI otomatis memuat file ini |
+| `TODO.md` | `1.2` ditandai `[x]` |
+| `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil tugas **`1.2 Skema Prisma — Area, Meja, & Sesi Meja`** di `TODO.md`, ubah menjadi `[/]`.
-2. Jalankan `npx prisma init --datasource-provider postgresql` (Prisma **6.19.3** — jangan upgrade ke Prisma 7, generator & layout-nya berbeda).
-3. Buat model berikut di `prisma/schema.prisma` (semua wajib punya `id`, `createdAt`, `updatedAt`):
-   * `Area`: `name`, `slug` unik, `floor` (Int), relasi `tables Table[]`.
-   * `Table`: `tableNumber`, `qrSlug` unik (dipakai URL `/t/[tableSlug]`), `capacity`, `status` (`TableStatus`: `AVAILABLE | OCCUPIED | NEEDS_CLEANING`), `currentPin` (String? 4 digit, di-hash/plaintext sesuai keputusan), `areaId`, relasi `sessions TableSession[]`, `@@unique([areaId, tableNumber])`.
-   * `TableSession`: `tableId`, `status` (`TableSessionStatus`: `ACTIVE | BILL_REQUESTED | CLOSED`), `guestCount`, `openedAt`, `closedAt`, `sessionTokenHash`, relasi `orders Order[]` (akan ditambah di 1.4), index pada `[tableId, status]`.
-4. Tambahkan `generator client` + `datasource db` (`env("DATABASE_URL")`, `directUrl = env("DIRECT_URL")` opsional) hanya sekali di file ini; **jangan** hapus model pada sub-tugas 1.3 & 1.4 nanti — file ini akan ditumbuhkan bertahap.
-5. Verifikasi dengan `npx prisma validate` dan `npx prisma format` (belum perlu `migrate`; migrasi dijalankan di 1.4). `npx prisma generate` boleh dijalankan untuk memastikan schema valid.
-6. Setelah lolos, tandai `[x]` di `TODO.md`, perbarui `HANDOVER.md`, lalu `git commit` (`feat(db): add area, table, and table session schema`).
+1. Ambil tugas **`1.3 Skema Prisma — Katalog Menu, Modifiers, & Resep`**, ubah menjadi `[/]`.
+2. **JANGAN** mengubah/menghapus model `Area`, `Table`, `TableSession` yang sudah ada — cukup tambahkan model baru di bawahnya (schema ditumbuhkan bertahap pada 1.4 juga).
+3. Tambahkan enum `StationType { KITCHEN BAR PASTRY }` (`@@map("station_type")`) — dipakai filter tiket KDS.
+4. Tambahkan model berikut (semua: `id String @id @default(cuid())`, `createdAt`, `updatedAt`):
+   * `Category`: `name`, `slug @unique`, `description?`, `imageUrl?`, `sortOrder Int @default(0)`, `isActive Boolean @default(true)`, relasi `menuItems MenuItem[]`, `@@map("categories")`.
+   * `MenuItem`: `categoryId`, `name`, `slug @unique`, `description?`, `imageUrl?`, **`basePrice Int`** & **`costPrice Int @default(0)`** (Rupiah BULAT — lihat catatan §4), `station StationType @default(KITCHEN)`, `isAvailable Boolean @default(true)` (sakelar 86'd), `isBestSeller Boolean @default(false)`, `prepTimeMinutes Int @default(10)`, `availableFrom String? @db.VarChar(5)` & `availableUntil String? @db.VarChar(5)` (format `HH:mm`, jadwal tayang), `sortOrder Int @default(0)`, `isActive Boolean @default(true)`; relasi `category`, `modifierGroups ModifierGroup[]`, `recipeItems MenuRecipe[]`; index `[categoryId, isActive]`, `[station]`, `@@map("menu_items")`.
+   * `ModifierGroup`: `name`, `selectionType ModifierSelectionType @default(SINGLE)`, `isRequired Boolean @default(false)`, `minSelect Int @default(0)`, `maxSelect Int @default(1)`, `sortOrder`, `isActive`; relasi implisit many-to-many `menuItems MenuItem[]` + `options ModifierOption[]`; `@@map("modifier_groups")`.
+   * `enum ModifierSelectionType { SINGLE MULTIPLE }` (`@@map("modifier_selection_type")`).
+   * `ModifierOption`: `groupId`, `name`, `priceDelta Int @default(0)`, `isDefault Boolean @default(false)`, `isAvailable Boolean @default(true)`, `sortOrder`; index `[groupId]`, `@@map("modifier_options")`.
+   * `Ingredient`: `name`, `sku String? @unique`, `unit IngredientUnit`, `currentStock Decimal @db.Decimal(12, 3) @default(0)`, `minThreshold Decimal @db.Decimal(12, 3) @default(0)`, `costPerUnit Int @default(0)`, `isActive`; relasi `recipeItems MenuRecipe[]`; `@@map("ingredients")`.
+   * `enum IngredientUnit { GRAM ML PIECE PACK SLICE }` (`@@map("ingredient_unit")`).
+   * `MenuRecipe` (join resep/BOM): `menuItemId`, `ingredientId`, `quantity Decimal @db.Decimal(12, 3)`; relasi ke `MenuItem` (`onDelete: Cascade`) & `Ingredient` (`onDelete: Restrict`); `@@unique([menuItemId, ingredientId])`, index `[ingredientId]`, `@@map("menu_recipes")`.
+5. Verifikasi: `npx prisma validate`, `npx prisma format`, `npx prisma generate` (semua harus exit 0). Cek nama model baru muncul: `node -e "console.log(Object.keys(require('@prisma/client').Prisma.ModelName))"`.
+6. Setelah lolos: tandai `[x]` di `TODO.md`, perbarui `HANDOVER.md`, `git commit` (`feat(db): add menu catalog, modifiers, and recipe models`), lalu push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Sandbox / instalasi**: `npm install` harus memakai `--ignore-scripts` karena sandbox memblokir *spawn* ber-pipe (EPERM). Bila butuh postinstall (mis. `prisma generate`), jalankan manual. Cache npm diarahkan ke `./.npm-cache` (sudah di-`.gitignore`).
-* **Font**: `next/font/google` gagal di lingkungan ini (`An error occurred in next/font` → network). Solusi terpasang: stylesheet `<link>` ke Google Fonts + stack fallback `--font-sans` di `globals.css`. Jangan kembalikan ke `next/font/google` tanpa menguji `npm run build`.
-* **Tema ganda**: `:root` = Customer Warm Light (`#FAF8F5`, primary Terracotta `#D9381E`, accent `#EA580C`); `.dark` = POS/KDS Slate Dark (`#0F172A` background, `#1E293B` card, primary Emerald `#10B981`). Layout POS/KDS nanti cukup `className="dark"`. Token status tersedia sebagai `success`/`warning`/`danger` dan `pos.bg|surface|elevated`.
-* **Standar angka**: gunakan class `tabular-nums` (built-in Tailwind) atau utility `.tabular` untuk semua harga, kuantitas, dan timer KDS (CONTEXT §5.2).
-* **Touch target**: `min-h-touch` / `min-w-touch` = `56px` untuk tombol POS/KDS; tombol pelanggan minimal `48px` (`min-h-12`).
-* **Kalkulasi harga**: seluruh perhitungan subtotal, *modifiers*, PB1 10%, *service charge* 5% wajib terpusat di `src/lib/pricing.ts` (dibuat di 1.6) dan divalidasi ulang di server.
-* **Anti-prank order**: pesanan QR dengan metode **Bayar di Kasir (Tunai)** berstatus awal `WAITING_CASHIER_APPROVAL` sampai kasir konfirmasi atau PIN Meja 4-digit valid dimasukkan.
-* **Memory files**: `CONTEXT.md`, `TODO.md`, `HANDOVER.md` ada di root repo **dan** di `C:\Users\Firman Ardiansyah\Downloads\`; setiap sesi wajib memperbarui keduanya agar tidak terjadi divergensi.
-* **Node & versi**: Node 24.22.1, npm 11.19.1. Repo belum punya `prisma/`, `src/components/`, `src/store/`, `src/types/` — akan dibuat bertahap sesuai fase.
+* **Mata uang = Rupiah bulat (Int, tanpa sen)**. Semua kolom harga (`basePrice`, `costPrice`, `priceDelta`, `costPerUnit`) memakai `Int` agar kalkulasi server bebas galat pembulatan & mudah dijumlahkan. Kolom stok resep memakai `Decimal(12,3)` karena butuh pecahan (gram/ml).
+* **Naming DB**: nama tabel di-*map* ke `snake_case` plural (`areas`, `tables`, `table_sessions`); nama kolom tetap camelCase (default Prisma). Enum type di-*map* ke `snake_case` (`table_status`, `table_session_status`). Akses DB hanya via Prisma, bukan raw SQL.
+* **PIN meja disimpan sebagai hash** (HMAC-SHA256 + `SESSION_SECRET`) pada `Table.currentPin` — walau nama kolom sesuai CONTEXT, isinya tidak boleh plaintext. Helper hashing akan dibuat di sub-tugas 2.1.
+* **`TableSession.sessionTokenHash` unik** — token mentah hanya dipegang cookie httpOnly pelanggan; `TableSession` belum punya relasi `orders`, ditambahkan saat model `Order` dibuat di 1.4.
+* **Satu sesi ACTIVE per meja** tidak bisa dijamin murni oleh schema (partial unique index). Wajib dijaga di layer aplikasi pada sub-tugas 2.1 (transaksi: tutup sesi lama → buat sesi baru).
+* **Sandbox / instalasi**: `npm install` harus memakai `--ignore-scripts` (spawn ber-pipe diblokir, EPERM). Cache npm di `./.npm-cache` (gitignored). `npx prisma generate` berjalan normal.
+* **Font**: `next/font/google` gagal di lingkungan ini; font dimuat via `<link>` + fallback `--font-sans`. Jangan dikembalikan ke `next/font/google` tanpa uji `npm run build`.
+* **Tema ganda**: `:root` Customer Warm Light, `.dark` POS/KDS Slate Dark. Token `success`/`warning`/`danger`/`brand`/`pos` tersedia di Tailwind. Touch target: `min-h-touch` (56px) untuk POS/KDS, `min-h-12` (48px) untuk pelanggan. Angka wajib `tabular-nums`.
+* **Kalkulasi harga** terpusat di `src/lib/pricing.ts` (dibuat 1.6): subtotal, modifier, PB1 10%, service 5%, kode unik 3 digit.
+* **Anti-prank order**: metode **Bayar di Kasir** → status awal `WAITING_CASHIER_APPROVAL` sampai kasir konfirmasi / PIN 4-digit valid.
+* **Memory files** ada di root repo **dan** `C:\Users\Firman Ardiansyah\Downloads\` — perbarui keduanya setiap sesi.
+* **Belum ada**: migrasi database (dijadwalkan 1.4, butuh PostgreSQL aktif; bila tidak ada DB, gunakan `npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script` untuk menghasilkan SQL tanpa apply), `prisma/seed.ts` (1.5), `src/lib/db.ts`, `src/components/`, `src/store/`, `src/types/`.
 
 ## 5. Riwayat Log Estafet (Chronological Relay History)
 * **[Sesi #0 — Inisialisasi Arsitektur]**: Menyelesaikan perencanaan desain sistem FnB menyeluruh dan menyusun 3 file memori eksternal (`CONTEXT.md`, `TODO.md`, `HANDOVER.md`). Siap dieksekusi oleh Coder Agent pada tugas `1.1`.
-* **[Sesi #1 — 2026-11-03 · 1.1 Setup Next.js]**: Repo `frmnardd/fnb-digital` di-clone (kosong), lalu scaffold Next.js 15.5.28 App Router + TS strict + Tailwind 3.4.19 + token tema ganda + `cn()` + `components.json` shadcn + `.env.example`. Lint, typecheck, dan build hijau; smoke test HTTP 200. Dua kendala lingkungan dipecahkan: npm cache ke dalam workspace (`--ignore-scripts`) dan font Google via `<link>`. Commit pending untuk tugas ini.
+* **[Sesi #1 — 2026-11-03 · 1.1 Setup Next.js]**: Repo `frmnardd/fnb-digital` di-clone (kosong), lalu scaffold Next.js 15.5.28 App Router + TS strict + Tailwind 3.4.19 + token tema ganda + `cn()` + `components.json` shadcn + `.env.example`. Lint/typecheck/build hijau, smoke test HTTP 200. Kendala lingkungan dipecahkan: npm cache ke workspace (`--ignore-scripts`) dan font Google via `<link>`. Commit `5011a02` di-push ke `origin/main`.
+* **[Sesi #1 — 2026-11-03 · 1.2 Skema Prisma Area/Meja/Sesi]**: Menambahkan `prisma/schema.prisma` (generator `prisma-client-js`, datasource PostgreSQL, enum `TableStatus`/`TableSessionStatus`, model `Area`/`Table`/`TableSession` dengan `qrSlug` unik, `currentPin` hashed, koordinat denah, index sesi) + `.env` lokal. `prisma validate`/`format`/`generate` hijau (Client 6.19.3); model terverifikasi: `Area, Table, TableSession`. Siap lanjut ke 1.3.
