@@ -2,9 +2,9 @@
 // Prisma Schema — Sistem Website FnB Digital
 // -----------------------------------------------------------------------------
 // Blueprint: CONTEXT.md §4. File ini ditumbuhkan BERTAHAP per sub-tugas:
-//   1.2 -> Area, Table, TableSession               (sub-tugas ini)
-//   1.3 -> Category, MenuItem, ModifierGroup, ModifierOption, Ingredient, MenuRecipe
-//   1.4 -> Order, OrderItem, Payment, CashierShift, CashDrawerLog, WaiterCall
+//   1.2 -> Area, Table, TableSession                              (SELESAI)
+//   1.3 -> Category, MenuItem, ModifierGroup, ModifierOption, Ingredient, MenuRecipe (SELESAI)
+//   1.4 -> Staff, Order, OrderItem, Payment, CashierShift, CashDrawerLog, WaiterCall (BERIKUTNYA)
 // Jangan mengubah nama model/enum yang sudah ada tanpa persetujuan pengguna.
 // =============================================================================
 
@@ -144,4 +144,213 @@ model TableSession {
   @@index([status, openedAt])
   @@index([lastActivityAt])
   @@map("table_sessions")
+}
+
+// -----------------------------------------------------------------------------
+// ENUM — Stasiun produksi, perilaku modifier, & satuan bahan baku
+// -----------------------------------------------------------------------------
+
+/// Stasiun yang mengeksekusi item pesanan — dipakai memfilter tiket di layar KDS.
+enum StationType {
+  KITCHEN /// Makanan (Dapur)
+  BAR /// Minuman (Barista)
+  PASTRY /// Kue & dessert
+
+  @@map("station_type")
+}
+
+/// Perilaku pemilihan opsi dalam satu grup modifier.
+enum ModifierSelectionType {
+  SINGLE /// Radio — wajib pilih tepat satu (mis. Level Pedas)
+  MULTIPLE /// Checkbox — boleh pilih banyak (mis. Extra Topping)
+
+  @@map("modifier_selection_type")
+}
+
+/// Satuan bahan baku untuk pemotongan stok otomatis (BOM/HPP).
+enum IngredientUnit {
+  GRAM
+  ML
+  PIECE
+  PACK
+  SLICE
+
+  @@map("ingredient_unit")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Kategori Menu
+// -----------------------------------------------------------------------------
+
+/// Kelompok tampilan menu pada halaman pelanggan (tab kategori sticky).
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  imageUrl    String?
+  /// Urutan tab kategori (kecil di kiri).
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menuItems MenuItem[]
+
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Item Menu
+// -----------------------------------------------------------------------------
+
+/// Satu produk yang dapat dipesan pelanggan (makanan/minuman/dessert).
+model MenuItem {
+  id          String  @id @default(cuid())
+  categoryId  String
+  name        String
+  slug        String  @unique
+  description String?
+  /// Foto menu (disarankan WebP 1:1) — di-host di storage/CDN.
+  imageUrl    String?
+
+  /// Harga jual dasar dalam RUPIAH BULAT (tanpa sen).
+  basePrice Int
+  /// Harga pokok penjualan (HPP) per porsi, Rupiah bulat — dasar Menu Engineering.
+  costPrice Int @default(0)
+
+  /// Stasiun produksi tujuan tiket pesanan.
+  station StationType @default(KITCHEN)
+
+  /// Sakelar cepat ketersediaan (86'd). false = tombol pesan dinonaktifkan.
+  isAvailable  Boolean @default(true)
+  isBestSeller Boolean @default(false)
+
+  /// Label bebas untuk filter dietary di halaman pelanggan, mis. "PEDAS", "BARU", "VEGAN".
+  tags String[] @default([])
+
+  /// Estimasi waktu penyajian (menit) — dasar perhitungan SLA aging timer KDS.
+  prepTimeMinutes Int @default(10)
+
+  /// Jadwal tayang opsional dalam format "HH:mm" (jam lokal restoran).
+  /// Bila diisi, menu hanya tampil di antara availableFrom s.d. availableUntil.
+  availableFrom  String? @db.VarChar(5)
+  availableUntil String? @db.VarChar(5)
+
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  modifierGroups ModifierGroup[] /// many-to-many implisit (tabel _MenuItemToModifierGroup)
+  recipeItems    MenuRecipe[]
+
+  @@index([categoryId, isActive, sortOrder])
+  @@index([station])
+  @@index([isAvailable])
+  @@map("menu_items")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Grup Modifier & Opsi Modifier
+// -----------------------------------------------------------------------------
+
+/// Kumpulan opsi kustomisasi yang menempel pada satu atau banyak MenuItem.
+/// Contoh: "Level Pedas" (SINGLE, wajib), "Extra Topping" (MULTIPLE, opsional).
+model ModifierGroup {
+  id            String                @id @default(cuid())
+  name          String
+  selectionType ModifierSelectionType @default(SINGLE)
+  /// true = pelanggan wajib memilih sebelum item bisa ditambahkan ke keranjang.
+  isRequired    Boolean               @default(false)
+  minSelect     Int                   @default(0)
+  maxSelect     Int                   @default(1)
+  sortOrder     Int                   @default(0)
+  isActive      Boolean               @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menuItems MenuItem[] /// many-to-many implisit dengan MenuItem
+  options   ModifierOption[]
+
+  @@index([isActive, sortOrder])
+  @@map("modifier_groups")
+}
+
+/// Satu pilihan di dalam grup modifier beserta tambahan harganya.
+model ModifierOption {
+  id          String  @id @default(cuid())
+  groupId     String
+  name        String
+  /// Tambahan harga dalam Rupiah bulat; 0 = gratis, boleh negatif untuk diskon opsi.
+  priceDelta  Int     @default(0)
+  /// Opsi terpilih otomatis saat bottom sheet dibuka.
+  isDefault   Boolean @default(false)
+  isAvailable Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([groupId, sortOrder])
+  @@map("modifier_options")
+}
+
+// -----------------------------------------------------------------------------
+// MODEL — Bahan Baku & Resep (BOM)
+// -----------------------------------------------------------------------------
+
+/// Bahan baku yang stoknya dipotong otomatis saat pesanan berstatus selesai/dimasak.
+model Ingredient {
+  id   String  @id @default(cuid())
+  name String
+  /// Kode internal/SKU opsional untuk pencocokan dengan supplier.
+  sku  String? @unique
+
+  unit IngredientUnit
+
+  /// Stok berjalan dalam satuan `unit` (mendukung pecahan: 1250.500 gram).
+  currentStock Decimal @default(0) @db.Decimal(12, 3)
+  /// Batas minimum; memicu peringatan restock di back-office.
+  minThreshold Decimal @default(0) @db.Decimal(12, 3)
+  /// Harga beli per satuan `unit`, Rupiah bulat — dipakai menghitung HPP resep.
+  costPerUnit  Int     @default(0)
+
+  isActive        Boolean   @default(true)
+  lastRestockedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipeItems MenuRecipe[]
+
+  @@index([isActive])
+  @@map("ingredients")
+}
+
+/// Takaran pemakaian satu bahan baku untuk satu porsi menu (Bill of Materials).
+model MenuRecipe {
+  id           String  @id @default(cuid())
+  menuItemId   String
+  ingredientId String
+  /// Jumlah bahan yang dipotong per 1 porsi, dalam satuan `Ingredient.unit`.
+  quantity     Decimal @db.Decimal(12, 3)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  /// Satu bahan hanya boleh muncul sekali per menu (gabungkan takarannya).
+  @@unique([menuItemId, ingredientId])
+  @@index([ingredientId])
+  @@map("menu_recipes")
 }
