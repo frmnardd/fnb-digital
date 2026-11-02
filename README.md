@@ -28,6 +28,7 @@ Perintah lain:
 
 ```bash
 npm run typecheck      # tsc --noEmit
+npm run test           # unit test (node:test + tsx)
 npm run build          # build produksi
 npm run lint           # ESLint (flat config)
 npm run db:generate    # prisma generate
