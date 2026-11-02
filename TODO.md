@@ -10,7 +10,7 @@
 - [x] **1.2 Skema Prisma — Area, Meja, & Sesi Meja**: Buat model `Area`, `Table`, dan `TableSession` di `prisma/schema.prisma` (mendukung QR Slug unik, PIN meja 4-digit, dan status meja).
 - [x] **1.3 Skema Prisma — Katalog Menu, Modifiers, & Resep**: Buat model `Category`, `MenuItem`, `ModifierGroup`, `ModifierOption`, `Ingredient`, dan `MenuRecipe` di `prisma/schema.prisma`.
 - [x] **1.4 Skema Prisma — Order, Payment, Shift Kasir, & Call Waiter**: Buat model `Order`, `OrderItem`, `Payment`, `CashierShift`, `CashDrawerLog`, dan `WaiterCall` beserta seluruh `enum` statusnya, lalu jalankan migrasi awal.
-- [ ] **1.5 Database Seeder (`prisma/seed.ts`)**: Buat *script* data awal berisi 2 area (Indoor & Outdoor), 10 meja dengan QR slug, 4 kategori menu, 12 menu FnB lengkap dengan *Modifier Groups* (Level Pedas, Ukuran, Topping, Level Gula), dan akun staf contoh (Admin, Kasir, Dapur).
+- [x] **1.5 Database Seeder (`prisma/seed.ts`)**: Buat *script* data awal berisi 2 area (Indoor & Outdoor), 10 meja dengan QR slug, 4 kategori menu, 12 menu FnB lengkap dengan *Modifier Groups* (Level Pedas, Ukuran, Topping, Level Gula), dan akun staf contoh (Admin, Kasir, Dapur).
 - [ ] **1.6 Modul Kalkulasi Harga (`src/lib/pricing.ts`)**: Buat fungsi murni (*pure function*) beserta *unit test* untuk menghitung subtotal item, harga *modifiers*, diskon/voucher, *service charge* (5%), pajak PB1 (10%), dan generator kode unik 3 digit (untuk transfer manual).
 
 ## Fase 2: Modul Keamanan Sesi QR Meja & API Pelanggan
