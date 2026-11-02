@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { ApiError, handleRouteError, jsonOk } from "@/lib/api/errors";
+import { parseQrSlug, readJsonBody } from "@/lib/api/request";
 import { db } from "@/lib/db";
 import { getServerEnv } from "@/lib/env";
 import {
@@ -36,8 +37,6 @@ const STALE_SESSION_MS = SESSION_TTL_SECONDS * 1000;
 
 /** Sesi masih dianggap "meja terisi" bila salah satu status ini. */
 const OPEN_SESSION_STATUSES: Array<"ACTIVE" | "BILL_REQUESTED"> = ["ACTIVE", "BILL_REQUESTED"];
-
-const QR_SLUG_PATTERN = /^[a-z0-9-]{1,64}$/;
 
 const createSessionSchema = z
   .object({
@@ -81,30 +80,6 @@ const sessionSelect = {
 type TableRow = Prisma.TableGetPayload<{ select: typeof tableSelect }>;
 type SessionRow = Prisma.TableSessionGetPayload<{ select: typeof sessionSelect }>;
 type RouteContext = { params: Promise<{ qrSlug: string }> };
-
-function parseQrSlug(raw: string): string {
-  const slug = raw.trim().toLowerCase();
-
-  if (!QR_SLUG_PATTERN.test(slug)) {
-    throw new ApiError("BAD_REQUEST", "Kode QR meja tidak valid.");
-  }
-
-  return slug;
-}
-
-async function readJsonBody(request: NextRequest): Promise<unknown> {
-  const raw = await request.text();
-
-  if (!raw.trim()) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    throw new ApiError("BAD_REQUEST", "Body permintaan bukan JSON yang valid.");
-  }
-}
 
 async function findTableOrThrow(qrSlug: string): Promise<TableRow> {
   const table = await db.table.findUnique({ where: { qrSlug }, select: tableSelect });

@@ -7,8 +7,8 @@ import { ZodError } from "zod";
  * Sukses : { data: ... }
  * Gagal  : { error: { code, message, details? } }
  *
- * Semua route handler WAJIB melempar `ApiError` (bukan `NextResponse.json` ad-hoc)
- * agar kode status & bentuk respons konsisten di seluruh modul.
+ * Semua route handler WAJIB memakai `ApiError`/`jsonOk` (bukan `NextResponse.json`
+ * ad-hoc) agar kode status, header, dan bentuk respons konsisten di semua modul.
  */
 
 export type ApiErrorCode =
@@ -32,22 +32,26 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   INTERNAL_ERROR: 500,
 };
 
+export type ApiHeaders = Record<string, string>;
+
 export class ApiError extends Error {
   readonly code: ApiErrorCode;
   readonly status: number;
   readonly details?: unknown;
+  readonly headers?: ApiHeaders;
 
-  constructor(code: ApiErrorCode, message: string, details?: unknown) {
+  constructor(code: ApiErrorCode, message: string, details?: unknown, headers?: ApiHeaders) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = STATUS_BY_CODE[code];
     this.details = details;
+    this.headers = headers;
   }
 }
 
-export function jsonOk<T>(data: T, status: number = 200): NextResponse {
-  return NextResponse.json({ data }, { status });
+export function jsonOk<T>(data: T, status: number = 200, headers?: ApiHeaders): NextResponse {
+  return NextResponse.json({ data }, { status, headers });
 }
 
 /** Mengubah error apa pun menjadi respons JSON yang seragam. */
@@ -61,7 +65,7 @@ export function handleRouteError(error: unknown): NextResponse {
           ...(error.details === undefined ? {} : { details: error.details }),
         },
       },
-      { status: error.status },
+      { status: error.status, headers: error.headers },
     );
   }
 
