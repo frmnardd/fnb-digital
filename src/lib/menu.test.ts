@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  getOrderabilityLabel,
+  getOrderabilityText,
   getRestaurantMinutes,
   isMenuItemOrderable,
   isWithinSchedule,
@@ -115,5 +117,25 @@ describe("isMenuItemOrderable", () => {
       }),
       false,
     );
+  });
+});
+
+describe("getOrderabilityLabel & getOrderabilityText", () => {
+  it("menandai HABIS bila stok mati (diprioritaskan di atas jadwal)", () => {
+    assert.equal(getOrderabilityLabel({ isAvailable: false, isOrderable: false }), "HABIS");
+    assert.equal(getOrderabilityText("HABIS"), "Habis");
+  });
+
+  it("menandai DI_LUAR_JAM bila stok ada tetapi di luar jam tayang", () => {
+    assert.equal(
+      getOrderabilityLabel({ isAvailable: true, isOrderable: false }),
+      "DI_LUAR_JAM",
+    );
+    assert.equal(getOrderabilityText("DI_LUAR_JAM"), "Di luar jam tayang");
+  });
+
+  it("menandai TERSEDIA bila menu bisa dipesan", () => {
+    assert.equal(getOrderabilityLabel({ isAvailable: true, isOrderable: true }), "TERSEDIA");
+    assert.equal(getOrderabilityText("TERSEDIA"), "Tersedia");
   });
 });

@@ -111,3 +111,40 @@ export function isMenuItemOrderable(input: MenuAvailabilityInput): boolean {
 
   return isWithinSchedule(input.availableFrom, input.availableUntil, minutes);
 }
+
+// -----------------------------------------------------------------------------
+// Label ketersediaan untuk UI
+// -----------------------------------------------------------------------------
+
+export type OrderabilityLabel = "TERSEDIA" | "HABIS" | "DI_LUAR_JAM";
+
+/**
+ * Menentukan status tampilan sebuah menu.
+ * Stok habis (86'd) diprioritaskan di atas jadwal tayang.
+ */
+export function getOrderabilityLabel(item: {
+  isAvailable: boolean;
+  isOrderable: boolean;
+}): OrderabilityLabel {
+  if (!item.isAvailable) {
+    return "HABIS";
+  }
+
+  if (!item.isOrderable) {
+    return "DI_LUAR_JAM";
+  }
+
+  return "TERSEDIA";
+}
+
+/** Teks siap pakai untuk badge/tombol di UI. */
+export function getOrderabilityText(label: OrderabilityLabel): string {
+  switch (label) {
+    case "HABIS":
+      return "Habis";
+    case "DI_LUAR_JAM":
+      return "Di luar jam tayang";
+    default:
+      return "Tersedia";
+  }
+}

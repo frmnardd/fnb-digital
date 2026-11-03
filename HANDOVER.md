@@ -6,58 +6,55 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 3 — Antarmuka Halaman Pelanggan (Mobile-First)` (2/6 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `3.2 Navigasi Kategori Sticky & Pencarian Instan` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `3.3 Katalog Kartu Menu (MenuCard)`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**67 test**, 21 suite) ✔, `typecheck` ✔, `lint` (0 warning) ✔, `build` ✔. Route: `/t/[tableSlug]` (ƒ, 165 kB) + 3 API (ƒ).
-* **Verifikasi UI dengan data (tanpa DB)**: komponen dirender via `renderToStaticMarkup` + fixture → header (meja/area/badge sesi/switcher/pelayan) & MenuBrowser (input search, chip filter, tab kategori, section, harga `Rp 38.000`, badge "Habis", hitungan "3 menu tersedia") semuanya LOLOS. Skrip sementara sudah dihapus.
+* **Fase Aktif**: `Fase 3 — Antarmuka Halaman Pelanggan (Mobile-First)` (3/6 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `3.3 Katalog Kartu Menu (MenuCard)` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `3.4 Bottom Sheet Kustomisasi Menu (ModifierSheet)`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**70 test**, 22 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔. Route: `/t/[tableSlug]` (ƒ, 165 kB) + 3 API (ƒ).
+* **Verifikasi UI dengan data (tanpa DB)**: `MenuCard` dirender via `renderToStaticMarkup` + fixture → `aspect-square`, `aria-label` tombol tambah, badge kuantitas (`2 di keranjang`), harga `Rp 38.000`, `tabular-nums`, tag Pedas/Baru, Best Seller, label "Habis" (tanpa tombol tambah), label "Di luar jam tayang" — semua LOLOS. Skrip sementara sudah dihapus.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 11 dari 31 sub-tugas selesai.
+* **Progress**: 12 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/types/menu.ts` | **Baru** — tipe publik `PublicMenuItem`/`PublicModifierGroup`/`PublicCategory`/`PublicMenuCatalog` (tanpa `costPrice`) |
-| `src/lib/menu-select.ts` | **Baru** — `select` Prisma bersama (`modifierOptionSelect`, `modifierGroupSelect`, `menuItemSelect`, `categorySelect`) + tipe `CategoryWithItems` |
-| `src/lib/menu-mapper.ts` | **Baru** — `toPublicCategory()` (hitung `isOrderable` server-side) |
-| `src/lib/services/customer-menu.ts` | **Baru** — `getCustomerMenuCatalog({ categorySlug? })` dipakai server component **dan** route API |
-| `src/app/api/menu/route.ts` | **Diperbarui** — memakai service (payload identik), tetap validasi `?category` |
-| `src/lib/menu-filter.ts` | **Baru** — `DIETARY_FILTERS`, `filterMenuItems`, `filterCategories`, `countMatchingItems` |
-| `src/lib/menu-filter.test.ts` | **Baru** — 13 test (pencarian nama/deskripsi/kosong/tanpa hasil, filter Best Seller/Pedas/Baru, kombinasi AND, kategori kosong dibuang, tanpa mutasi, hitungan) |
-| `src/lib/constants.ts` | **Baru** — `CUSTOMER_HEADER_OFFSET_PX = 125` (offset sticky tabs) |
-| `src/components/customer/CategoryTabs.tsx` | **Baru** — tab sticky (`top` = offset header), `IntersectionObserver`, smooth scroll, `aria-current` |
-| `src/components/customer/MenuCard.tsx` | **Baru** — kartu ringkas: thumbnail 96px, badge Habis (grayscale), Best Seller, tag Pedas/Baru, harga `formatRupiah`, estimasi menit |
-| `src/components/customer/MenuBrowser.tsx` | **Baru** — search instan + clear, chip filter multi-pilih, CategoryTabs, hitungan hasil, empty state + reset, section `id="kategori-<slug>"` dengan `scroll-mt` |
-| `src/app/(customer)/t/[tableSlug]/page.tsx` | **Diperbarui** — memuat katalog menu (dengan `try/catch`) dan merender `MenuBrowser`; fallback "Menu belum tersedia" |
-| `TODO.md` | `3.2` ditandai `[x]` |
+| `src/lib/menu.ts` | **Diperbarui** — tambah `OrderabilityLabel`, `getOrderabilityLabel()` (HABIS diprioritaskan), `getOrderabilityText()` |
+| `src/lib/menu.test.ts` | **Diperbarui** — 3 test baru untuk label ketersediaan (total 70 test) |
+| `src/components/customer/MenuCard.tsx` | **Diperbarui** — thumbnail `aspect-square w-[104px]`, grayscale + overlay "Habis", badge kuantitas keranjang, ribbon Best Seller, chip tag, harga `tabular-nums`, tombol tambah bulat 48×48 (`Plus`) / label status saat tidak bisa dipesan |
+| `src/components/customer/MenuBrowser.tsx` | **Diperbarui** — state sementara `cartQuantities` + `handleAddToCart()` (ditandai jelas: akan diganti Zustand di 3.5), meneruskan `quantityInCart` & `onAdd` |
+| `TODO.md` | `3.3` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`3.3 Katalog Kartu Menu (MenuCard)`**, ubah menjadi `[/]`.
-2. **Buat helper label ketersediaan** di `src/lib/menu.ts` (pure + test di `src/lib/menu.test.ts`):
-   * `getOrderabilityLabel(item: { isAvailable: boolean; isOrderable: boolean }): "TERSEDIA" | "HABIS" | "DI_LUAR_JAM"` (habis diprioritaskan; `isOrderable=false` + stok ada → `DI_LUAR_JAM`).
-   * `getOrderabilityText(label)` → teks UI Indonesia ("Habis", "Di luar jam tayang", "Tersedia").
-3. **Perbarui `src/components/customer/MenuCard.tsx`**:
-   * Thumbnail **rasio 1:1** (`aspect-square`), ukuran tetap ± `w-[104px]`; `object-cover`; `loading="lazy"`; grayscale + overlay "Habis" bila `!isAvailable`. Boleh tetap `<img>` (host foto belum tentu terdaftar di `next.config.ts`; pertahankan komentar `eslint-disable-next-line`).
-   * Ribbon "Best Seller", chip tag (`PEDAS`, `BARU`), estimasi waktu saji.
-   * Harga memakai `formatRupiah` + class `tabular-nums`.
-   * **Badge kuantitas keranjang** di pojok thumbnail (lingkaran primary) bila `quantityInCart > 0`.
-   * Tombol tambah 48×48 (`size="icon"`, ikon `Plus`) di kanan bawah kartu, `aria-label={`Tambah ${item.name} ke keranjang`}`; disabled + label "Habis"/"Tutup" saat `!isOrderable`.
-   * Props: `{ item: PublicMenuItem; quantityInCart?: number; onAdd?: (item: PublicMenuItem) => void }`.
-4. **`MenuBrowser`**: tambahkan state sementara `quantities: Record<string, number>` (increment pada `onAdd`) dan teruskan `quantityInCart`. **Beri komentar jelas** bahwa state ini SEMENTARA dan akan diganti Zustand cart store pada sub-tugas 3.5 — jangan membuat store sekarang.
-5. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`. Untuk memastikan markup kartu benar, pola yang sudah terbukti: render `MenuCard`/`MenuBrowser` via `renderToStaticMarkup` dengan fixture **di skrip sementara** (ingat: butuh `tsconfig` sementara dengan `"jsx": "react-jsx"` dan **hapus file sementara sebelum commit**).
-6. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `3.4 Bottom Sheet Kustomisasi Menu (ModifierSheet)`), `git commit` (`feat(customer): polish menu card with availability states and cart badge`), push.
+1. Ambil **`3.4 Bottom Sheet Kustomisasi Menu (ModifierSheet)`**, ubah menjadi `[/]`.
+2. **Buat `src/lib/modifier-selection.ts`** (pure, tanpa React) + `src/lib/modifier-selection.test.ts`:
+   * `type ModifierSelection = Record<string, string[]>` (key = `groupId`, value = daftar `optionId`).
+   * `createInitialSelection(groups)` — pilih opsi `isDefault`; untuk grup **SINGLE wajib** yang belum punya default, preselect opsi pertama (agar pelanggan tidak melihat form invalid sejak awal). Grup MULTIPLE default kosong.
+   * `toggleOption(selection, group, optionId)` — SINGLE: ganti isi grup (klik opsi terpilih lagi = kosongkan bila grup tidak wajib); MULTIPLE: toggle, **abaikan** bila sudah mencapai `maxSelect` (kembalikan selection lama).
+   * `isOptionDisabled(group, selection, optionId)` — untuk menonaktifkan opsi saat `maxSelect` tercapai.
+   * `validateSelection(groups, selection)` → `{ valid: boolean; errors: Array<{ groupId: string; message: string }> }` (cek `isRequired`, `minSelect`, `maxSelect`, opsi tidak tersedia).
+   * `selectionToModifiers(groups, selection)` → `PricingModifierInput[]` (`id: `${groupId}:${optionId}``, `name`, `priceDelta`) siap dipakai `src/lib/pricing.ts`.
+   * `calculateSelectionTotal(basePrice, groups, selection, quantity)` → `{ unitPrice, total }` memakai `calculateLineTotal()` dari `src/lib/pricing.ts` (JANGAN menulis ulang rumus).
+   * Uji minimal: defaults, SINGLE replace/clear, MULTIPLE toggle & batas `maxSelect`, required gagal/lulus, `minSelect` gagal, total dengan `priceDelta` positif/negatif, kuantitas > 1, dan `selectionToModifiers` menghasilkan harga sesuai.
+3. **Buat `src/components/customer/ModifierSheet.tsx`** (`"use client"`, memakai `BottomSheet` yang sudah ada):
+   * Props: `{ item: PublicMenuItem | null; open: boolean; onOpenChange: (open: boolean) => void; onConfirm: (payload: { item: PublicMenuItem; quantity: number; modifiers: PricingModifierInput[]; note: string; unitPrice: number; total: number }) => void }`.
+   * Saat `open` berganti untuk item baru → reset state (`createInitialSelection`), kuantitas 1, catatan kosong.
+   * Grup **SINGLE** → tombol radio-like (satu baris per opsi, tinggi ≥ 44px, `role="radiogroup"` + `aria-checked`); grup **MULTIPLE** → baris checkbox (`aria-checked`), tampilkan label `+Rp 8.000` (pakai `formatRupiah`) atau "Gratis"; opsi melewati `maxSelect` dinonaktifkan.
+   * Kuantitas: tombol − / + 48×48 (`Minus`/`Plus`), tampilkan angka `tabular-nums`, min 1, max 20.
+   * Catatan khusus `textarea` max 160 + penghitung karakter.
+   * Jika ada grup wajib belum dipilih → tampilkan pesan error per grup + tombol "Tambah ke Keranjang" disabled.
+   * Footer sticky di dalam sheet: total harga (`tabular-nums`, dihitung reaktif dengan `calculateSelectionTotal`) + tombol konfirmasi 48px.
+4. **`MenuBrowser`**: klik `+` pada `MenuCard` → bila `item.modifierGroups.length > 0` buka `ModifierSheet`, selain itu langsung tambah kuantitas. `onConfirm` menambah `quantity` ke state sementara `cartQuantities` (masih sementara sampai 3.5) dan menutup sheet.
+5. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`. `ModifierSheet` tidak bisa diverifikasi lewat SSR (butuh portal + efek), jadi andalkan unit test modul seleksi + build; jangan mengklaim uji visual tanpa bukti.
+6. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `3.5 Store Keranjang & Sinkronisasi Group Order (useCartStore)`), `git commit` (`feat(customer): add modifier bottom sheet with reactive pricing`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Katalog menu satu jalur**: `getCustomerMenuCatalog()` dipakai server component & `GET /api/menu`; `select` Prisma terpusat di `menu-select.ts`. Jangan menduplikasi query.
-* **Sticky offset**: `CUSTOMER_HEADER_OFFSET_PX = 125` (hitung dari kelas header). Bila `CustomerHeader` berubah tinggi, perbarui konstanta ini; section memakai `scroll-mt-[190px]` (header + tabs).
-* **Filter**: `MenuBrowser` memfilter di client (instan, tanpa request). Aturan: pencarian di `name`+`description` (case-insensitive), filter dietary **AND**, kategori kosong dibuang.
+* **Harga**: selalu lewat `src/lib/pricing.ts` (`calculateLineTotal`, `calculateOrderTotals`, `formatRupiah`). `selectionToModifiers()` hanya menyiapkan input, bukan menghitung sendiri.
+* **State keranjang masih sementara** di `MenuBrowser` (`cartQuantities`) — akan diganti `useCartStore` (Zustand + persist) pada 3.5. Jangan menambah logika diskon/pajak di komponen.
+* **Bottom sheet** sudah tersedia di `src/components/ui/bottom-sheet.tsx` (portal + Framer Motion + Esc + kunci scroll). Tidak ada Radix — jangan menambah dependency.
+* **Sticky offset**: `CUSTOMER_HEADER_OFFSET_PX = 125`; section menu memakai `scroll-mt-[190px]`.
 * **Rahasia**: `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`, stok bahan — jangan pernah ke klien.
-* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; urutan validasi env → slug/query → body → DB.
-* **Jangan menambah dependency baru** (Radix/Vitest/toast). Tersedia: framer-motion, lucide-react, cva, clsx, tailwind-merge, zustand (**belum dipakai**).
-* **State**: `orderMode` masih `useState` di `CustomerHeader`; keranjang belum ada — akan dibuat di 3.5 (Zustand + persist).
-* **Pricing**: `src/lib/pricing.ts` (`formatRupiah`, `calculateOrderTotals`) — jangan menulis ulang rumus.
-* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
+* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`.
+* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`. Grup modifier seed: Level Pedas (SINGLE wajib), Ukuran (SINGLE wajib), Extra Topping (MULTIPLE maks 3), Level Gula (SINGLE wajib).
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
 * **Tema**: `:root` Customer Warm Light (`#FAF8F5`, primary `#D9381E`), `.dark` POS/KDS Slate Dark; target sentuh pelanggan ≥ 48px, POS/KDS 56px; angka wajib `tabular-nums`.
@@ -74,5 +71,6 @@
 * **[Sesi #1 — 2026-11-03 · 2.1 Sesi QR Meja]**: `db.ts`, `env.ts`, `security/token.ts`, `api/errors.ts`, route session. Commit `f5ce4e3`.
 * **[Sesi #1 — 2026-11-03 · 2.2 Katalog Menu Publik]**: `menu.ts` + 13 test, route `GET /api/menu`. Commit `2c7e45e`.
 * **[Sesi #1 — 2026-11-03 · 2.3 Call Waiter]**: `waiter-call.ts` + 9 test, `api/request.ts`, route call-waiter. Fase 2 tuntas. Commit `f0913e1`.
-* **[Sesi #1 — 2026-11-03 · 3.1 Header Meja]**: Fondasi UI + `CustomerHeader` + `CallWaiterSheet` + `StartSessionButton` + halaman `/t/[tableSlug]`. Commit `3e4faee`.
-* **[Sesi #1 — 2026-11-03 · 3.2 Kategori & Pencarian]**: tipe & select menu bersama, service katalog (dipakai API + server component), `menu-filter.ts` (+13 test), `CategoryTabs` sticky + IntersectionObserver, `MenuBrowser` (search/chip/empty state), `MenuCard` awal. Verifikasi render dengan fixture lolos semua assertion. Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 3.1 Header Meja]**: Fondasi UI + `CustomerHeader` + `CallWaiterSheet` + page `/t/[tableSlug]`. Commit `3e4faee`.
+* **[Sesi #1 — 2026-11-03 · 3.2 Kategori & Pencarian]**: tipe & select menu bersama, service katalog, `menu-filter.ts` (+13 test), `CategoryTabs`, `MenuBrowser`, `MenuCard` awal. Commit `91e698f`.
+* **[Sesi #1 — 2026-11-03 · 3.3 Kartu Menu]**: `getOrderabilityLabel/Text` (+3 test), `MenuCard` final (gambar 1:1, badge habis/kuantitas, tombol tambah 48px), integrasi state sementara di `MenuBrowser`. Verifikasi SSR fixture lolos 11 assertion. Commit menyusul.

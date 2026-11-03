@@ -14,7 +14,7 @@ import {
   type DietaryFilter,
 } from "@/lib/menu-filter";
 import { cn } from "@/lib/utils";
-import type { PublicCategory } from "@/types/menu";
+import type { PublicCategory, PublicMenuItem } from "@/types/menu";
 
 /**
  * Penjelajah menu pelanggan: pencarian instan, filter dietary, dan tab kategori
@@ -24,6 +24,20 @@ import type { PublicCategory } from "@/types/menu";
 export function MenuBrowser({ categories }: { categories: PublicCategory[] }) {
   const [search, setSearch] = useState("");
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
+
+  /**
+   * SEMENTARA (sub-tugas 3.3): hitungan keranjang lokal hanya untuk umpan balik
+   * visual pada `MenuCard`. Akan diganti Zustand cart store pada sub-tugas 3.5 —
+   * jangan menambah logika bisnis keranjang di sini.
+   */
+  const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
+
+  function handleAddToCart(item: PublicMenuItem) {
+    setCartQuantities((previous) => ({
+      ...previous,
+      [item.id]: (previous[item.id] ?? 0) + 1,
+    }));
+  }
 
   const filterOptions = useMemo(
     () => ({ search, dietaryFilters }),
@@ -173,7 +187,12 @@ export function MenuBrowser({ categories }: { categories: PublicCategory[] }) {
 
               <div className="flex flex-col gap-2">
                 {category.items.map((item) => (
-                  <MenuCard key={item.id} item={item} />
+                  <MenuCard
+                    key={item.id}
+                    item={item}
+                    quantityInCart={cartQuantities[item.id] ?? 0}
+                    onAdd={handleAddToCart}
+                  />
                 ))}
               </div>
             </section>
