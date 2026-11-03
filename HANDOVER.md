@@ -7,13 +7,13 @@
 > - Fase 1–7 selesai (37 sub-tugas). **Fase 8 (kesiapan produksi)**: 8.1 & 8.2 selesai.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 8 — Kesiapan Produksi` (3/4 selesai)
-* **Sub-Tugas Terakhir**: `8.3 Seed Bahan Baku & Resep Contoh` ✅
-* **Sub-Tugas Berikutnya**: `8.4 Higiene Produksi` (tutup shift OPEN, bersihkan data uji, rotasi kredensial, ganti PIN)
+* **Fase Aktif**: `Fase 8 — Kesiapan Produksi` (3,5/4 selesai)
+* **Sub-Tugas Terakhir**: `8.3 Seed Bahan Baku & Resep Contoh` ✅ + **pembersihan data uji (bagian 8.4)**
+* **Sub-Tugas Berikutnya**: sisa `8.4` — **aksi pemilik**: rotasi password Supabase, `SESSION_SECRET` baru di VPS, ganti PIN staf lewat skrip, lepas Nginx Basic Auth.
 * **Build**: **HIJAU** — `npm test` (**422 test**, 141 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔ (middleware 35 kB).
-* **Database**: Supabase Singapore, termigrasi + seed. **12 bahan baku + 25 baris resep** sudah masuk; HPP 12 menu terhitung dari BOM (contoh: Nasi Goreng Kampung HPP Rp8.105 dari harga Rp38.000). **Sisa data uji**: `ORD-0001` (SERVED) + **shift OPEN kasir Rp150.000** → bereskan di 8.4.
-* **Status deploy**: live di VPS (PM2 + Nginx + HTTPS `fnbtech.biz.id`) dengan **Nginx Basic Auth sementara**. Setelah redeploy RBAC (commit `62215f7`), Basic Auth **harus dilepas** agar pelanggan bisa memesan.
-* **Progress**: 40 dari 41 sub-tugas.
+* **Database**: Supabase Singapore, termigrasi + seed. **12 bahan baku + 25 baris resep**, HPP 12 menu terhitung dari BOM. **Data transaksi uji sudah dibersihkan** (order/payment/item/sesi/shift/drawer log = 0; semua meja `AVAILABLE`). Master utuh: 2 area, 10 meja, 4 kategori, 12 menu, 4 staf, 12 bahan, 25 resep.
+* **Status deploy**: live di VPS (PM2 + Nginx + HTTPS `fnbtech.biz.id`) dengan **Nginx Basic Auth sementara**. RBAC sudah ada di `main` (`62215f7`) tetapi **belum di-deploy** ke VPS.
+* **Progress**: 40 dari 41 sub-tugas (8.4 menunggu aksi pemilik).
 
 ## 2. Hasil Uji RBAC (matriks, sudah diverifikasi runtime)
 | Skenario | Hasil |
@@ -57,17 +57,15 @@
 | `TODO.md` | `8.2` & `8.3` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
-## 4. Instruksi Spesifik untuk Agent Berikutnya (8.4)
-1. **8.4 Higiene Produksi**:
-   * Tutup shift kasir yang masih OPEN (`POST /api/pos/shift/close` dengan `actualEndingCash` wajar) atau hapus lewat Prisma.
-   * Bersihkan data uji: hapus `Order`/`Payment`/`OrderItem`/`CashierShift`/`CashDrawerLog`/`TableSession` hasil uji (sisakan master: area, meja, kategori, menu, staf, modifier, ingredient, resep).
-   * **Rotasi kredensial** yang pernah terekspos di chat: reset password Supabase (Ctrl+K → "reset database password"), perbarui `.env` lokal + VPS, buat `SESSION_SECRET` baru di VPS (`openssl rand -base64 48`), lalu `bash scripts/deploy.sh`.
-   * Ganti PIN staf seed (`111111`/`222222`/`333333`/`444444`).
-2. **Langkah deploy setelah 8.2 (manual, di VPS)**:
-   * `bash scripts/deploy.sh`
-   * Hapus 2 baris `auth_basic*` dari `/etc/nginx/sites-available/fnbtech` → `nginx -t && systemctl reload nginx` (kalau dibiarkan, pelanggan tidak bisa scan QR).
-   * Uji: `https://fnbtech.biz.id/login` (staf) dan `https://fnbtech.biz.id/t/meja-01` (pelanggan tanpa login).
-4. Tandai `[x]`, perbarui HANDOVER, commit + push.
+## 4. Instruksi Spesifik untuk Agent Berikutnya (sisa 8.4 — aksi pemilik)
+1. **Sudah selesai di repo**: skrip `scripts/set-staff-pin.ts` (ganti PIN 6 digit, di-hash dengan `SESSION_SECRET` server) + dokumentasi di README.
+2. **Aksi pemilik yang tersisa (tidak bisa dikerjakan agen)**:
+   * **Deploy RBAC**: di VPS `cd /var/www/fnb && bash scripts/deploy.sh`.
+   * **Lepas Nginx Basic Auth**: hapus 2 baris `auth_basic*` di `/etc/nginx/sites-available/fnbtech` → `nginx -t && systemctl reload nginx`. Tanpa ini pelanggan tidak bisa scan QR.
+   * **Rotasi kredensial**: reset password Supabase (Ctrl+K → "reset database password") → perbarui `.env` lokal & VPS → `SESSION_SECRET` baru di VPS (`openssl rand -base64 48`) → `bash scripts/deploy.sh`. Kalau `SESSION_SECRET` berubah, **hash PIN lama tidak valid** → jalankan ulang `npm run db:seed` **di VPS** (seed meng-hash ulang PIN) atau ganti PIN via skrip.
+   * **Ganti PIN staf**: `STAFF_PIN=246810 npx tsx scripts/set-staff-pin.ts --email admin@fnb.local` (ulangi untuk kasir/dapur/waiter) — dijalankan **di VPS**.
+   * **Uji akhir**: `https://fnbtech.biz.id/login` (staf), `https://fnbtech.biz.id/t/meja-01` (pelanggan tanpa login), `https://fnbtech.biz.id/admin/dashboard` (admin).
+3. Setelah semua tuntas: tandai `8.4` `[x]`, perbarui HANDOVER, commit + push.
 
 ## 5. Catatan Penting / Kendala
 * **Cookie sesi memakai flag `Secure` di produksi** → login hanya berfungsi lewat **HTTPS**. Jangan uji login via `http://IP:3000`; gunakan domain.

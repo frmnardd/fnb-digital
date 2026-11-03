@@ -149,6 +149,17 @@ Webhook Midtrans: `https://<domain>/api/webhooks/payment`.
 - Rate-limit PIN bersifat in-memory (hilang saat restart, tidak cocok untuk multi-instance).
 - Ganti PIN staf hasil seed dan `SESSION_SECRET` sebelum produksi.
 
+### Mengganti PIN staf
+
+PIN di-hash dengan `SESSION_SECRET`, jadi jalankan **di server** agar hash cocok dengan yang dipakai aplikasi:
+
+```bash
+cd /var/www/fnb
+STAFF_PIN=246810 npx tsx scripts/set-staff-pin.ts --email admin@fnb.local
+```
+
+Ulangi untuk `kasir@fnb.local`, `dapur@fnb.local`, dan `waiter@fnb.local`. Setelah selesai, login lama otomatis tidak berlaku.
+
 ## Struktur folder
 
 ```text
