@@ -355,6 +355,35 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
       ) : null}
 
       {isPaid ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            Cetak struk thermal (ESC/POS)
+          </span>
+          <div className="grid grid-cols-2 gap-1.5">
+            {([58, 80] as const).map((width) => (
+              <Button
+                key={width}
+                variant="outline"
+                onClick={() =>
+                  window.open(
+                    `/api/orders/${encodeURIComponent(bill.orderNumber)}/receipt/escpos?width=${width}`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+              >
+                Struk {width} mm
+              </Button>
+            ))}
+          </div>
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            Payload ESC/POS diunduh sebagai berkas; kirim ke printer lewat jembatan
+            cetak lokal (QZ Tray / WebUSB).
+          </p>
+        </div>
+      ) : null}
+
+      {isPaid ? (
         <p className="flex items-center gap-1.5 rounded-lg bg-success/10 p-2 text-[11px] font-bold text-success">
           <CheckCircle2 className="size-3.5" aria-hidden />
           Pembayaran sudah lunas

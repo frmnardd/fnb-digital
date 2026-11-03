@@ -6,57 +6,52 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 5 — Halaman Kasir (POS Dashboard)` (8/9 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `5.8 Manajemen Shift Kasir & Laci Kas` ✅
-* **Sub-Tugas yang Berikutnya**: `5.9 Modul Cetak Struk Thermal ESC/POS` (penutup Fase 5)
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**303 test**, 100 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
-* **Route baru**: `GET /api/pos/shift`, `POST /api/pos/shift/open`, `POST /api/pos/shift/log`, `POST /api/pos/shift/close`, halaman `/cashier/shift` (ƒ).
-* **Verifikasi kontrak HTTP**: shift tanpa/`staffEmail` invalid → 422 (format Zod konsisten), valid tanpa DB → 500 rapi; open/log/close body kosong → 422; `/cashier/shift` → **200** ("Shift & Laci Kas", "Email kasir").
+* **Fase Aktif**: `Fase 6 — KDS & Runner` — **Fase 5 SELESAI (9/9)**
+* **Sub-Tugas Terakhir yang Selesai**: `5.9 Modul Cetak Struk Thermal ESC/POS` ✅
+* **Sub-Tugas yang Berikutnya**: `6.1 Layar KDS Dapur & Barista (/kds/[station])`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**322 test**, 107 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
+* **Route baru**: `GET /api/orders/[orderNumber]/receipt/escpos?width=58|80` (ƒ).
+* **Verifikasi kontrak HTTP**: orderNumber invalid → 400, valid tanpa DB → 500 rapi; `/cashier` → **200**.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 29 dari 31 sub-tugas selesai.
+* **Progress**: 30 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/shift.ts` | **Baru** — `CASH_DRAWER_TYPES`/label, `summarizeDrawerLogs` (SALE/CASH_IN/CASH_OUT/REFUND, CLOSING_COUNT diabaikan), `computeExpectedCash`, `computeVariance`, `buildShiftSummary` |
-| `src/lib/shift.test.ts` | **Baru** — 9 test |
-| `src/lib/services/shift.ts` | **Baru** — `getCurrentShift(staffEmail)`: shift OPEN + log + ringkasan + jumlah transaksi tunai |
-| `src/app/api/pos/shift/route.ts` | **Baru** — GET ringkasan shift (`staffEmail` query, ZodError dinormalisasi) |
-| `src/app/api/pos/shift/open/route.ts` | **Baru** — buka shift + `CashDrawerLog OPENING_FLOAT`; 409 bila masih ada shift terbuka |
-| `src/app/api/pos/shift/log/route.ts` | **Baru** — catat `CASH_IN`/`CASH_OUT` (shift harus OPEN) |
-| `src/app/api/pos/shift/close/route.ts` | **Baru** — blind count: hitung ekspektasi & variance, tutup shift, catat `CLOSING_COUNT` |
-| `src/app/api/orders/[orderNumber]/cashier-confirm/route.ts` | Diperbarui — pembayaran tunai dikaitkan ke shift OPEN (`Payment.shiftId`) + `CashDrawerLog SALE` |
-| `src/components/pos/ShiftWorkspace.tsx` | **Baru** — buka shift (modal awal), ringkasan (modal/penjualan/kas masuk-keluar/refund/ekspektasi/transaksi), form mutasi kas, modal tutup shift (blind count), kartu **Z-Report** + `window.print()`, toggle suara |
-| `src/app/(pos)/cashier/shift/page.tsx` | **Baru** — render workspace (email default `kasir@fnb.local`) |
-| `src/components/pos/PosSidebar.tsx` | Diperbarui — "Shift" aktif menuju `/cashier/shift` |
-| `TODO.md` | `5.8` ditandai `[x]` |
+| `src/lib/printer/escpos.ts` | **Baru** — `COLUMNS_BY_WIDTH` (32/48), `toPrintableAscii`, `EscPosBuilder` (`align`, `bold`, `text`, `line`, `divider`, `columnsRow`, `qr`, `feedLines`, `cut`, `toString`, `toBytes`), `formatReceiptLines` (header/meja/waktu/item+modifier/total/pembayaran), `toEscPos` |
+| `src/lib/printer/escpos.test.ts` | **Baru** — 19 test (lebar kolom, pemotongan, perintah init/cut/feed/QR, ASCII sanitization, format struk, diskon/kode unik) |
+| `src/app/api/orders/[orderNumber]/receipt/escpos/route.ts` | **Baru** — payload ESC/POS (`text/plain`, `Content-Disposition`), `width` 58/80, tanpa `costPrice` |
+| `src/components/pos/PosBillPanel.tsx` | Diperbarui — setelah lunas tampil tombol **Struk 58 mm** & **Struk 80 mm** + catatan jembatan cetak (QZ Tray/WebUSB) |
+| `TODO.md` | `5.9` ditandai `[x]` (Fase 5 selesai) |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`5.9 Modul Cetak Struk Thermal (src/lib/printer/escpos.ts)`**, ubah menjadi `[/]`.
-2. **Buat `src/lib/printer/escpos.ts`** (pure + `src/lib/printer/escpos.test.ts`):
-   * Konstanta perintah ESC/POS: `ESC @` (init), `ESC a n` (align), `ESC ! n` (font/bold), `GS V m` (cut), `ESC d n` (feed).
-   * `createEscPosBuilder({ paperWidth: 58 | 80 })` → objek dengan `init()`, `align()`, `bold()`, `text()`, `line()`, `divider()`, `columns(left, right, width)`, `qr()`, `feed()`, `cut()`, `toString()` (string biner) dan `toBytes()` (Uint8Array).
-   * `formatReceipt(order, options)` → `string[]` baris struk 32 kolom (58 mm) / 48 kolom (80 mm): header, nomor, meja/tipe, waktu (Asia/Jakarta), item + modifier, subtotal/service/PB1/total, pembayaran, footer.
-   * `toEscPos(order, options)` merangkai builder + baris struk + QR (bila ada).
-   * Uji: lebar kolom (32/48), potongan teks panjang, `columns` rata kanan, perintah init/align/cut ada di output, format struk memuat total & nomor pesanan, encoding ASCII aman.
-3. **Buat endpoint `GET /api/orders/[orderNumber]/receipt/escpos?width=58|80`** (`runtime = "nodejs"`): ambil order + items + payment, kembalikan `text/plain; charset=utf-8` berisi perintah ESC/POS (header `Cache-Control: no-store`). Jangan kirim `costPrice`.
-4. **Integrasi UI**: pada `PosBillPanel` setelah pembayaran lunas, tambahkan tombol **Cetak Struk Thermal** (56px) yang membuka `window.open('/api/orders/<no>/receipt/escpos?width=80')` (fallback: `fetch` + tampilkan instruksi); sertakan pemilih 58/80 mm.
-5. **Catat batasan**: browser tidak bisa mengirim byte mentah ke printer tanpa WebUSB/WebSerial atau jembatan lokal (mis. QZ Tray). Endpoint menyediakan payload ESC/POS siap pakai untuk agen cetak lokal; jangan mengklaim cetak langsung berhasil.
-6. **Verifikasi**: `npm test` (escpos), `typecheck`, `lint`, `build`; probe endpoint orderNumber invalid → 400, tanpa DB → 500 rapi; halaman POS tetap 200.
-7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke **Fase 6.1: Layar KDS Dapur & Barista**), `git commit` (`feat(printer): add escpos receipt formatting for 58mm and 80mm thermal printers`), push.
+1. Ambil **`6.1 Layar KDS Dapur & Barista (/kds/[station])`**, ubah menjadi `[/]`.
+2. **Buat `src/lib/kds.ts`** (pure + `src/lib/kds.test.ts`):
+   * `KDS_STATION_SLUGS = { kitchen: "KITCHEN", bar: "BAR", pastry: "PASTRY" }` + `parseStationSlug(slug)`.
+   * `groupItemsByOrder(items)` → tiket per `orderNumber` (hanya item berstatus `QUEUED`/`COOKING`).
+   * `getTicketAgeState(queuedAt, now, slaMinutes)` → `"FRESH" | "WARNING" | "OVERDUE"` (mis. hijau < 5 mnt, kuning 5–10 mnt, merah > 10 mnt) + `agingMinutes`.
+   * `getKdsSummary(tickets)` → jumlah tiket, item, overdue.
+   * Uji: parse slug (valid/invalid), grouping, aging (0/5/10/11 menit, clock skew), ringkasan.
+3. **Buat `GET /api/kds/orders?station=KITCHEN|BAR|PASTRY`**: ambil `OrderItem` dengan status `QUEUED|COOKING` pada stasiun tersebut, join order + meja (`orderNumber`, `orderType`, `tableNumber`, `areaName`, `confirmedAt`), urutkan `queuedAt asc`; kembalikan `{ station, generatedAt, tickets }` (tanpa `costPrice`). `select` eksplisit.
+4. **Buat route group KDS**: `src/app/(kds)/layout.tsx` (`dark h-dvh overflow-hidden`, landscape) dan `src/app/(kds)/kds/[station]/page.tsx` (server: validasi slug → `notFound()` bila invalid; muat data langsung dari DB via service `src/lib/services/kds.ts`, fallback `[]` saat DB gagal).
+5. **Buat `src/components/kds/KdsBoard.tsx`** (client): grid tiket (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3`), polling 5 dtk `GET /api/kds/orders`, empty state "Tidak ada tiket", indikator stasiun & jumlah tiket, tombol bump per tiket (dihidupkan penuh di 6.2 — untuk 6.1 boleh tampil disabled berlabel "Bump (6.2)").
+6. **Buat `src/components/kds/TicketCard.tsx`**: nomor pesanan, meja/tipe, waktu masuk (`tabular-nums`), daftar item (qty + nama + modifier + catatan), badge aging berwarna (hijau/kuning/merah) memakai `getTicketAgeState`, target sentuh 56px.
+7. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`; probe `/kds/kitchen` → 200, `/kds/unknown` → 404, `GET /api/kds/orders?station=BAR` tanpa DB → 500 rapi.
+8. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `6.2 SLA Aging Timer & Bump Action`), `git commit` (`feat(kds): add kitchen and bar display boards with station filtering`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Shift**: ekspektasi kas = modal awal + penjualan tunai + kas masuk − kas keluar − refund; `CLOSING_COUNT` tidak dihitung sebagai arus kas. Variance = kas fisik − ekspektasi.
-* **Pembayaran tunai** otomatis mengait ke shift OPEN pada `cashier-confirm` (menambah `CashDrawerLog SALE`).
-* **Belum ada sesi staf/RBAC**: `staffEmail` dikirim dari body/query & di-prefill `kasir@fnb.local`; semua endpoint ditandai `TODO(RBAC)`.
+* **ESC/POS**: payload yang dihasilkan endpoint adalah berkas `text/plain` berisi perintah printer; browser TIDAK bisa mengirim byte mentah tanpa jembatan (QZ Tray/WebUSB/agen). Jangan klaim cetak langsung berhasil.
+* **Struk HTML** untuk pelanggan tetap di `/t/[tableSlug]/order/[orderNumber]/receipt` (print browser).
+* **Shift**: ekspektasi kas = modal awal + penjualan + kas masuk − kas keluar − refund; pembayaran tunai otomatis mengait ke shift OPEN.
+* **Belum ada sesi staf/RBAC**: endpoint kasir/KDS masih terbuka (`TODO(RBAC)`); jangan menulis klaim keamanan.
 * **PENTING — jangan menulis file non-ASCII memakai PowerShell `Set-Content`/`Add-Content`** (mojibake & BOM). Gunakan `write`/`edit`.
 * **Satu jalur order**: `createOrder()` (`src/lib/services/order-creation.ts`) dipakai `POST /api/orders` & `/api/pos/walk-in`.
 * **POS/KDS** `.dark`, target sentuh 56px, `tabular-nums`, `h-dvh overflow-hidden` per panel.
 * **Rahasia**: `MIDTRANS_SERVER_KEY`, `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`.
 * **BUG SSR ZUSTAND**: `persist` tidak memasang `store.persist` saat storage tidak tersedia → guard.
-* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; biarkan `ZodError` naik ke `handleRouteError` agar format konsisten.
-* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf PIN 6 digit (`kasir@fnb.local/222222`).
+* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; biarkan `ZodError` naik ke `handleRouteError`.
+* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `kasir@fnb.local/222222`.
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
 * **Memory files** ada di root repo **dan** `C:\Users\Firman Ardiansyah\Downloads\` — perbarui keduanya setiap sesi.
@@ -91,4 +86,5 @@
 * **[Sesi #1 — 2026-11-03 · 5.5 Split/Merge/Move]**: `order-number.ts`, `split-bill.ts` (+13 test), API split/move/merge, `SplitBillModal`. Commit `e08a6f7`.
 * **[Sesi #1 — 2026-11-03 · 5.6 Walk-In]**: `services/order-creation.ts`, API & halaman walk-in, `walkin.ts` (+8 test), `WalkInWorkspace`. Commit `60d01ba`.
 * **[Sesi #1 — 2026-11-03 · 5.7 Supervisor PIN]**: `authorization-token.ts` (+8 test), `supervisor-pin.ts` (+4 test), API `supervisor-authorize`, `SupervisorPinModal`. Commit `916aad4`.
-* **[Sesi #1 — 2026-11-03 · 5.8 Shift & Laci Kas]**: `shift.ts` (+9 test), service & 4 endpoint shift, `ShiftWorkspace` (buka/tutup, blind count, Z-report), pembayaran tunai terhubung ke shift (`shiftId` + SALE log). 303 test lulus; probe 422/500 & halaman 200. Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 5.8 Shift & Laci Kas]**: `shift.ts` (+9 test), 4 endpoint shift, `ShiftWorkspace`, tautan pembayaran tunai ke shift. Commit `f1ba2e7`.
+* **[Sesi #1 — 2026-11-03 · 5.9 ESC/POS]**: `printer/escpos.ts` (+19 test, builder 58/80 mm, QR, format struk), endpoint payload ESC/POS, tombol cetak 58/80 mm di bill panel. Fase 5 tuntas; 322 test lulus; probe 400/500 rapi. Commit menyusul.

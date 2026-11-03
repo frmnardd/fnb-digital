@@ -43,7 +43,7 @@
 - [x] **5.6 Modul Kasir Input Manual (`Walk-In / Takeaway POS`)**: Buat katalog menu cepat di layar kasir bagi pelanggan yang langsung memesan di depan meja kasir tanpa scan QR.
 - [x] **5.7 Otorisasi PIN Supervisor (Void / Refund / Diskon Manual)**: Buat komponen modal input PIN 6-Digit Manajer sebelum kasir diizinkan membatalkan item yang sudah masuk dapur atau memberikan potongan harga khusus.
 - [x] **5.8 Manajemen Shift Kasir & Laci Kas (`ShiftManagement`)**: Buat fitur buka *shift* (input modal kas awal), catat kas masuk/keluar, dan tutup *shift* (*blind cash count* + cetak laporan Z-Report).
-- [ ] **5.9 Modul Cetak Struk Thermal (`src/lib/printer/escpos.ts`)**: Buat *formatter* struk ukuran 58mm & 80mm yang mendukung pencetakan langsung dari *browser* kasir.
+- [x] **5.9 Modul Cetak Struk Thermal (`src/lib/printer/escpos.ts`)**: Buat *formatter* struk ukuran 58mm & 80mm yang mendukung pencetakan langsung dari *browser* kasir.
 
 ## Fase 6: Kitchen Display System (KDS) & Aplikasi Pelayan (Runner)
 - [ ] **6.1 Layar KDS Dapur & Barista (`/(kds)/kds/[station]`)**: Buat tampilan tiket pesanan berorientasi *landscape* yang otomatis memfilter item berdasarkan stasiun (`KITCHEN` vs `BAR`).
