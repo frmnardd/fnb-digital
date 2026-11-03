@@ -40,7 +40,7 @@
 - [x] **5.3 Kalkulator Pembayaran Tunai & Eksekusi Lunas (`CashPaymentModal`)**: Buat modal pembayaran kasir dengan tombol pecahan uang cepat (`Uang Pas`, `Rp 50.000`, `Rp 100.000`), kalkulasi kembalian otomatis, dan pemicu cetak struk.
 - [x] **5.4 Peta Meja Interaktif (`InteractiveFloorPlan`)**: Buat tampilan grid meja per lantai dengan indikator warna status meja, durasi duduk pelanggan, dan total tagihan berjalan (*Open Bill*).
 - [x] **5.5 Fitur Split Bill, Gabung Tagihan, & Pindah Meja**: Buat antarmuka untuk memisahkan tagihan (*Split by Item* atau *Split Equally*) serta memindahkan sesi pesanan ke nomor meja lain.
-- [ ] **5.6 Modul Kasir Input Manual (`Walk-In / Takeaway POS`)**: Buat katalog menu cepat di layar kasir bagi pelanggan yang langsung memesan di depan meja kasir tanpa scan QR.
+- [x] **5.6 Modul Kasir Input Manual (`Walk-In / Takeaway POS`)**: Buat katalog menu cepat di layar kasir bagi pelanggan yang langsung memesan di depan meja kasir tanpa scan QR.
 - [ ] **5.7 Otorisasi PIN Supervisor (Void / Refund / Diskon Manual)**: Buat komponen modal input PIN 6-Digit Manajer sebelum kasir diizinkan membatalkan item yang sudah masuk dapur atau memberikan potongan harga khusus.
 - [ ] **5.8 Manajemen Shift Kasir & Laci Kas (`ShiftManagement`)**: Buat fitur buka *shift* (input modal kas awal), catat kas masuk/keluar, dan tutup *shift* (*blind cash count* + cetak laporan Z-Report).
 - [ ] **5.9 Modul Cetak Struk Thermal (`src/lib/printer/escpos.ts`)**: Buat *formatter* struk ukuran 58mm & 80mm yang mendukung pencetakan langsung dari *browser* kasir.
