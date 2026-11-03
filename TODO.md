@@ -47,7 +47,7 @@
 
 ## Fase 6: Kitchen Display System (KDS) & Aplikasi Pelayan (Runner)
 - [x] **6.1 Layar KDS Dapur & Barista (`/(kds)/kds/[station]`)**: Buat tampilan tiket pesanan berorientasi *landscape* yang otomatis memfilter item berdasarkan stasiun (`KITCHEN` vs `BAR`).
-- [ ] **6.2 SLA Aging Timer & Bump Action**: Tambahkan penghitung waktu mundur/maju pada setiap kartu KDS (berubah warna Hijau ➔ Kuning ➔ Merah berkedip jika lewat batas waktu) dan interaksi sentuh untuk menandai item `COOKING` ➔ `READY`.
+- [x] **6.2 SLA Aging Timer & Bump Action**: Tambahkan penghitung waktu mundur/maju pada setiap kartu KDS (berubah warna Hijau ➔ Kuning ➔ Merah berkedip jika lewat batas waktu) dan interaksi sentuh untuk menandai item `COOKING` ➔ `READY`.
 - [ ] **6.3 Tampilan Mobile Pelayan / Runner (`/(staff)/runner`)**: Buat halaman ringan untuk staf pelayan yang menampilkan daftar makanan yang siap diambil di dapur, daftar panggilan meja (*Call Waiter*), dan tombol ubah status meja selesai dibersihkan.
 
 ## Fase 7: Halaman Admin / Back-Office & Analitik

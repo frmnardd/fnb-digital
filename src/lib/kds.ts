@@ -143,3 +143,59 @@ export function getKdsSummary(
 
   return { tickets: tickets.length, items, overdue };
 }
+
+// -----------------------------------------------------------------------------
+// Bump actions
+// -----------------------------------------------------------------------------
+
+export const KDS_ITEM_ACTIONS = ["START_COOKING", "MARK_READY", "REVERT"] as const;
+
+export type KdsItemAction = (typeof KDS_ITEM_ACTIONS)[number];
+
+export type KdsItemStatus = "QUEUED" | "COOKING" | "READY" | "SERVED" | "VOIDED";
+
+/**
+ * Status item berikutnya untuk sebuah aksi bump.
+ * Mengembalikan `null` bila aksi tidak valid untuk status saat ini.
+ */
+export function nextItemStatus(
+  current: KdsItemStatus,
+  action: KdsItemAction,
+): KdsItemStatus | null {
+  if (action === "START_COOKING") {
+    return current === "QUEUED" ? "COOKING" : null;
+  }
+
+  if (action === "MARK_READY") {
+    return current === "QUEUED" || current === "COOKING" ? "READY" : null;
+  }
+
+  // REVERT: selangkah mundur
+  if (current === "COOKING") {
+    return "QUEUED";
+  }
+
+  if (current === "READY") {
+    return "COOKING";
+  }
+
+  return null;
+}
+
+/** `true` bila semua item aktif sudah READY/SERVED (VOIDED diabaikan). */
+export function isTicketReady(statuses: readonly KdsItemStatus[]): boolean {
+  const active = statuses.filter((status) => status !== "VOIDED");
+
+  return active.length > 0 && active.every((status) => status === "READY" || status === "SERVED");
+}
+
+/** Label durasi tiket: "12 mnt" atau "1 j 05 mnt". */
+export function getTicketAgingLabel(minutes: number): string {
+  const safe = Math.max(0, Math.floor(minutes));
+
+  if (safe < 60) {
+    return `${safe} mnt`;
+  }
+
+  return `${Math.floor(safe / 60)} j ${String(safe % 60).padStart(2, "0")} mnt`;
+}

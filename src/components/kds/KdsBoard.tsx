@@ -4,7 +4,7 @@ import { ChefHat, Loader2, RefreshCw, Utensils } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { TicketCard } from "@/components/kds/TicketCard";
-import { getKdsSummary, type KdsStation, type KdsTicket } from "@/lib/kds";
+import { getKdsSummary, type KdsItemAction, type KdsStation, type KdsTicket } from "@/lib/kds";
 
 /**
  * Board KDS per stasiun: polling tiket aktif tiap 5 detik.
@@ -31,6 +31,8 @@ export function KdsBoard({
   const [now, setNow] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -78,6 +80,49 @@ export function KdsBoard({
     () => getKdsSummary(tickets, now ?? new Date(0)),
     [tickets, now],
   );
+
+  async function sendBump(key: string, url: string, body: Record<string, unknown>) {
+    if (busyKey !== null) {
+      return;
+    }
+
+    setBusyKey(key);
+    setActionError(null);
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+
+      if (!response.ok) {
+        setActionError(payload?.error?.message ?? "Aksi bump gagal diproses.");
+        return;
+      }
+
+      await refresh();
+    } catch {
+      setActionError("Tidak dapat menghubungi server.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  function handleItemAction(itemId: string, action: KdsItemAction) {
+    void sendBump(`item:${itemId}`, `/api/kds/items/${encodeURIComponent(itemId)}/bump`, {
+      action,
+    });
+  }
+
+  function handleBumpTicket(orderId: string) {
+    void sendBump(`order:${orderId}`, `/api/kds/orders/${encodeURIComponent(orderId)}/bump`, {
+      action: "BUMP_TICKET",
+    });
+  }
 
   return (
     <div className="flex h-dvh flex-col">
@@ -140,14 +185,26 @@ export function KdsBoard({
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {tickets.map((ticket) => (
-              <TicketCard key={ticket.orderId} ticket={ticket} now={now} />
+              <TicketCard
+                key={ticket.orderId}
+                ticket={ticket}
+                now={now}
+                onItemAction={handleItemAction}
+                onBumpTicket={handleBumpTicket}
+                busyKey={busyKey}
+              />
             ))}
           </div>
         )}
       </main>
 
-      <footer className="flex shrink-0 items-center justify-between border-t border-border bg-card px-4 py-2 text-[10px] text-muted-foreground">
+      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-4 py-2 text-[10px] text-muted-foreground">
         <span>Diperbarui otomatis setiap 5 detik</span>
+        {actionError ? (
+          <span role="alert" className="font-semibold text-danger">
+            {actionError}
+          </span>
+        ) : null}
         <span className="tabular-nums">{lastUpdated ? `Terakhir: ${lastUpdated}` : "Menunggu pembaruan"}</span>
       </footer>
     </div>
