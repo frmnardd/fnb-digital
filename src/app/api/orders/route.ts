@@ -16,6 +16,7 @@ import {
   PAYMENT_METHODS,
   type PaymentMethodKey,
 } from "@/lib/order-draft";
+import { generateOrderNumber, isUniqueViolation, ORDER_NUMBER_MAX_ATTEMPTS } from "@/lib/order-number";
 import { TABLE_SESSION_COOKIE } from "@/lib/security/token";
 
 /**
@@ -35,7 +36,7 @@ export const runtime = "nodejs";
 
 const OPEN_SESSION_STATUSES: Array<"ACTIVE" | "BILL_REQUESTED"> = ["ACTIVE", "BILL_REQUESTED"];
 const PAYMENT_EXPIRY_MINUTES = 15;
-const MAX_ORDER_NUMBER_ATTEMPTS = 5;
+
 
 const orderSchema = z
   .object({
@@ -113,16 +114,6 @@ function mapDraftError(error: OrderDraftError): ApiError {
   }
 }
 
-function isUniqueViolation(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
-}
-
-/** Nomor pesanan tampilan: ORD-0001, ORD-0002, … */
-async function nextOrderNumber(tx: Prisma.TransactionClient, attempt: number): Promise<string> {
-  const total = await tx.order.count();
-  return `ORD-${String(total + 1 + attempt).padStart(4, "0")}`;
-}
-
 export async function POST(request: NextRequest): Promise<Response> {
   try {
     getServerEnv();
@@ -162,11 +153,11 @@ export async function POST(request: NextRequest): Promise<Response> {
     let result: Awaited<ReturnType<typeof createOrder>> | null = null;
     let lastError: unknown = null;
 
-    for (let attempt = 0; attempt < MAX_ORDER_NUMBER_ATTEMPTS && result === null; attempt += 1) {
+    for (let attempt = 0; attempt < ORDER_NUMBER_MAX_ATTEMPTS && result === null; attempt += 1) {
       try {
         result = await createOrder(input, draft, attempt);
       } catch (error) {
-        if (isUniqueViolation(error) && attempt < MAX_ORDER_NUMBER_ATTEMPTS - 1) {
+        if (isUniqueViolation(error) && attempt < ORDER_NUMBER_MAX_ATTEMPTS - 1) {
           lastError = error;
           continue;
         }
@@ -263,7 +254,7 @@ async function createOrder(
       });
     }
 
-    const orderNumber = await nextOrderNumber(tx, attempt);
+    const orderNumber = await generateOrderNumber(tx, attempt);
     const status =
       input.paymentMethod === "CASH" || input.paymentMethod === "EDC_CARD"
         ? ("WAITING_CASHIER_APPROVAL" as const)
@@ -338,3 +329,4 @@ async function createOrder(
     return { order, payment };
   });
 }
+

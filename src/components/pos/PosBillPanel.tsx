@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { CashPaymentModal } from "@/components/pos/CashPaymentModal";
+import { SplitBillModal } from "@/components/pos/SplitBillModal";
 import { Button } from "@/components/ui/button";
 import { formatRupiah } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isCashModalOpen, setIsCashModalOpen] = useState(false);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
 
   const loadBill = useCallback(async (orderNumber: string) => {
     setIsLoading(true);
@@ -289,6 +291,11 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
 
       {canConfirm ? (
         <div className="flex flex-col gap-1.5">
+          {bill.items.length > 1 ? (
+            <Button variant="secondary" className="w-full" onClick={() => setIsSplitModalOpen(true)}>
+              Split Bill
+            </Button>
+          ) : null}
           {isCash ? (
             <Button className="w-full" onClick={() => setIsCashModalOpen(true)}>
               <Banknote className="size-4" aria-hidden />
@@ -355,6 +362,18 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
         orderNumber={bill.orderNumber}
         total={bill.totals.grandTotal}
         onPaid={(changeAmount) => void handleCashPaid(changeAmount)}
+      />
+
+      <SplitBillModal
+        open={isSplitModalOpen}
+        onOpenChange={setIsSplitModalOpen}
+        orderNumber={bill.orderNumber}
+        items={bill.items}
+        onSplit={(newOrderNumber) => {
+          setNotice(`Tagihan dipisah ke pesanan ${newOrderNumber}.`);
+          void loadBill(bill.orderNumber);
+          router.refresh();
+        }}
       />
     </div>
   );

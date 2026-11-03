@@ -1,7 +1,9 @@
 "use client";
 
 import { Armchair, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { Modal } from "@/components/ui/modal";
 
 import {
   formatSeatedDuration,
@@ -33,6 +35,23 @@ export function InteractiveFloorPlan({ initialAreas }: { initialAreas: PosFloorA
   const [activeAreaId, setActiveAreaId] = useState<string>(initialAreas[0]?.id ?? "");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  const [isMoveOpen, setIsMoveOpen] = useState(false);
+  const [isMergeOpen, setIsMergeOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const refreshAreas = useCallback(async () => {
+    try {
+      const response = await fetch("/api/pos/tables", { cache: "no-store" });
+      const payload = (await response.json().catch(() => null)) as FloorResponse | null;
+
+      if (payload?.data?.areas) {
+        setAreas(payload.data.areas);
+      }
+    } catch {
+      // abaikan gangguan jaringan; percobaan berikutnya menyusul
+    }
+  }, []);
 
   useEffect(() => {
     setNow(new Date());
@@ -41,26 +60,47 @@ export function InteractiveFloorPlan({ initialAreas }: { initialAreas: PosFloorA
   }, []);
 
   useEffect(() => {
-    const load = async () => {
-      if (document.visibilityState !== "visible") {
-        return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void refreshAreas();
       }
+    }, REFRESH_MS);
 
-      try {
-        const response = await fetch("/api/pos/tables", { cache: "no-store" });
-        const payload = (await response.json().catch(() => null)) as FloorResponse | null;
-
-        if (payload?.data?.areas) {
-          setAreas(payload.data.areas);
-        }
-      } catch {
-        // abaikan gangguan jaringan; percobaan berikutnya menyusul
-      }
-    };
-
-    const timer = setInterval(() => void load(), REFRESH_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [refreshAreas]);
+
+  async function runAction(url: string, body: Record<string, unknown>) {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+
+      if (!response.ok) {
+        setActionError(payload?.error?.message ?? "Aksi gagal diproses.");
+        return false;
+      }
+
+      await refreshAreas();
+      return true;
+    } catch {
+      setActionError("Tidak dapat menghubungi server.");
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   const activeArea: PosFloorArea | null = areas.find((area) => area.id === activeAreaId) ?? areas[0] ?? null;
 
@@ -71,6 +111,60 @@ export function InteractiveFloorPlan({ initialAreas }: { initialAreas: PosFloorA
 
   const selectedTable: PosFloorTable | null =
     activeArea?.tables.find((table) => table.id === selectedTableId) ?? null;
+
+  const availableTables = (activeArea?.tables ?? [])
+    .filter((table) => table.status === "AVAILABLE" && table.id !== selectedTable?.id)
+    .map((table) => ({
+      id: table.id,
+      tableNumber: table.tableNumber,
+      capacity: table.capacity,
+      areaName: activeArea?.name ?? "",
+    }));
+
+  const otherSessions = areas.flatMap((area) =>
+    area.tables.flatMap((table) =>
+      table.session && table.session.id !== selectedTable?.session?.id
+        ? [
+            {
+              sessionId: table.session.id,
+              label: `${area.name} · Meja ${table.tableNumber}`,
+              runningBill: table.runningBill,
+            },
+          ]
+        : [],
+    ),
+  );
+
+  async function handleMove(targetTableId: string) {
+    if (!selectedTable?.session) {
+      return;
+    }
+
+    const isSuccess = await runAction(
+      `/api/sessions/${encodeURIComponent(selectedTable.session.id)}/move-table`,
+      { targetTableId },
+    );
+
+    if (isSuccess) {
+      setIsMoveOpen(false);
+      setSelectedTableId(null);
+    }
+  }
+
+  async function handleMerge(sourceSessionId: string) {
+    if (!selectedTable?.session) {
+      return;
+    }
+
+    const isSuccess = await runAction(
+      `/api/sessions/${encodeURIComponent(selectedTable.session.id)}/merge`,
+      { sourceSessionId },
+    );
+
+    if (isSuccess) {
+      setIsMergeOpen(false);
+    }
+  }
 
   if (areas.length === 0) {
     return (
@@ -216,17 +310,21 @@ export function InteractiveFloorPlan({ initialAreas }: { initialAreas: PosFloorA
           <div className="flex gap-2">
             <button
               type="button"
-              disabled
-              title="Pindah meja (segera hadir)"
-              className="min-h-touch flex-1 cursor-not-allowed rounded-lg border border-border bg-background text-[11px] font-bold text-muted-foreground/50"
+              onClick={() => {
+                setActionError(null);
+                setIsMoveOpen(true);
+              }}
+              className="min-h-touch flex-1 rounded-lg border border-border bg-card text-[11px] font-bold transition hover:bg-secondary"
             >
               Pindah Meja
             </button>
             <button
               type="button"
-              disabled
-              title="Gabung tagihan (segera hadir)"
-              className="min-h-touch flex-1 cursor-not-allowed rounded-lg border border-border bg-background text-[11px] font-bold text-muted-foreground/50"
+              onClick={() => {
+                setActionError(null);
+                setIsMergeOpen(true);
+              }}
+              className="min-h-touch flex-1 rounded-lg border border-border bg-card text-[11px] font-bold transition hover:bg-secondary"
             >
               Gabung Tagihan
             </button>
@@ -237,6 +335,89 @@ export function InteractiveFloorPlan({ initialAreas }: { initialAreas: PosFloorA
           Pilih meja untuk melihat detail sesi dan tagihan berjalan.
         </p>
       )}
+
+      <Modal
+        open={isMoveOpen}
+        onOpenChange={setIsMoveOpen}
+        title="Pindah Meja"
+        description={
+          selectedTable
+            ? `Pindahkan sesi Meja ${selectedTable.tableNumber} ke meja kosong.`
+            : undefined
+        }
+      >
+        <div className="flex flex-col gap-1.5">
+          {availableTables.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              Tidak ada meja kosong pada area ini.
+            </p>
+          ) : (
+            availableTables.map((table) => (
+              <button
+                key={table.id}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => void handleMove(table.id)}
+                className="flex min-h-touch items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-left text-xs font-bold transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span>
+                  Meja {table.tableNumber}
+                  <span className="ml-1.5 text-[10px] font-semibold text-muted-foreground">
+                    {table.areaName} · {table.capacity} orang
+                  </span>
+                </span>
+                <span className="text-[10px] font-extrabold uppercase text-primary">Pilih</span>
+              </button>
+            ))
+          )}
+
+          {actionError ? (
+            <p role="alert" className="text-[11px] font-semibold text-danger">
+              {actionError}
+            </p>
+          ) : null}
+        </div>
+      </Modal>
+
+      <Modal
+        open={isMergeOpen}
+        onOpenChange={setIsMergeOpen}
+        title="Gabung Tagihan"
+        description={
+          selectedTable
+            ? `Gabungkan pesanan meja lain ke Meja ${selectedTable.tableNumber}.`
+            : undefined
+        }
+      >
+        <div className="flex flex-col gap-1.5">
+          {otherSessions.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              Tidak ada sesi meja aktif lain untuk digabungkan.
+            </p>
+          ) : (
+            otherSessions.map((session) => (
+              <button
+                key={session.sessionId}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => void handleMerge(session.sessionId)}
+                className="flex min-h-touch items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-left text-xs font-bold transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span>{session.label}</span>
+                <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">
+                  {formatRupiah(session.runningBill)}
+                </span>
+              </button>
+            ))
+          )}
+
+          {actionError ? (
+            <p role="alert" className="text-[11px] font-semibold text-danger">
+              {actionError}
+            </p>
+          ) : null}
+        </div>
+      </Modal>
     </div>
   );
 }

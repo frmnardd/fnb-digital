@@ -76,6 +76,7 @@ export async function GET(_request: NextRequest, context: RouteContext): Promise
         items: {
           orderBy: { createdAt: "asc" },
           select: {
+            id: true,
             menuName: true,
             quantity: true,
             unitPrice: true,
@@ -125,6 +126,7 @@ export async function GET(_request: NextRequest, context: RouteContext): Promise
         grandTotal: order.grandTotal,
       },
       items: order.items.map((item) => ({
+        id: item.id,
         name: item.menuName,
         quantity: item.quantity,
         unitPrice: item.unitPrice,

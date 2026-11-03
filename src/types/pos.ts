@@ -31,6 +31,7 @@ export interface PosBillModifier {
 }
 
 export interface PosBillItem {
+  id: string;
   name: string;
   quantity: number;
   unitPrice: number;
@@ -99,3 +100,4 @@ export interface PosFloorArea {
   floor: number;
   tables: PosFloorTable[];
 }
+
