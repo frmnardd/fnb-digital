@@ -217,6 +217,23 @@ export function calculateTax(
 }
 
 /**
+ * Kembalian pembayaran tunai di kasir.
+ * Melempar `PricingError` bila uang diterima kurang dari total atau bukan Rupiah bulat.
+ */
+export function calculateCashChange(amountReceived: number, total: number): number {
+  assertRupiah(amountReceived, "Uang diterima");
+  assertRupiah(total, "Total tagihan");
+
+  if (amountReceived < total) {
+    throw new PricingError(
+      `Uang diterima (${amountReceived}) kurang dari total tagihan (${total}).`,
+    );
+  }
+
+  return amountReceived - total;
+}
+
+/**
  * Kode unik 3 digit (100–999) untuk Transfer Manual, supaya nominal transfer
  * tidak tertukar dengan pesanan lain. Memakai Web Crypto (tersedia di Node & browser).
  */

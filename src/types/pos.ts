@@ -24,3 +24,50 @@ export interface PosQueueOrder {
   /** ISO string waktu pesanan dibuat. */
   createdAt: string;
 }
+
+export interface PosBillModifier {
+  name: string;
+  priceDelta: number;
+}
+
+export interface PosBillItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  modifiers: PosBillModifier[];
+  note: string | null;
+  status: string;
+  station: string;
+}
+
+export interface PosBillPayment {
+  id: string;
+  method: string;
+  status: string;
+  amountPaid: number;
+  changeAmount: number;
+  proofImageUrl: string | null;
+  paidAt: string | null;
+}
+
+export interface PosBillTotals {
+  subtotal: number;
+  discountAmount: number;
+  serviceCharge: number;
+  taxAmount: number;
+  uniqueCode: number;
+  grandTotal: number;
+}
+
+export interface PosBillDetail {
+  orderNumber: string;
+  status: PosOrderStatus;
+  orderType: "DINE_IN" | "TAKEAWAY";
+  tableLabel: string | null;
+  createdAt: string;
+  customerName: string | null;
+  totals: PosBillTotals;
+  items: PosBillItem[];
+  payment: PosBillPayment | null;
+}

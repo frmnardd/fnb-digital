@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  calculateCashChange,
   calculateDiscount,
   calculateLineTotal,
   calculateOrderTotals,
@@ -231,5 +232,25 @@ describe("formatRupiah", () => {
 
   it("menolak nominal yang bukan angka", () => {
     assert.throws(() => formatRupiah(Number.NaN), PricingError);
+  });
+});
+
+describe("calculateCashChange", () => {
+  it("mengembalikan 0 untuk uang pas", () => {
+    assert.equal(calculateCashChange(87780, 87780), 0);
+  });
+
+  it("menghitung kembalian", () => {
+    assert.equal(calculateCashChange(100000, 87780), 12220);
+    assert.equal(calculateCashChange(150000, 87780), 62220);
+  });
+
+  it("menolak uang yang kurang dari total", () => {
+    assert.throws(() => calculateCashChange(50000, 87780), PricingError);
+  });
+
+  it("menolak nominal bukan Rupiah bulat", () => {
+    assert.throws(() => calculateCashChange(100000.5, 87780), PricingError);
+    assert.throws(() => calculateCashChange(100000, -1), PricingError);
   });
 });
