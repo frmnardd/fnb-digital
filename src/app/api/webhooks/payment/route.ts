@@ -9,6 +9,7 @@ import {
   midtransNotificationSchema,
   verifyMidtransSignature,
 } from "@/lib/payment/webhook";
+import { deductInventoryForOrder } from "@/lib/services/inventory";
 
 /**
  * POST /api/webhooks/payment
@@ -124,6 +125,9 @@ export async function POST(request: NextRequest): Promise<Response> {
             data: { status: "CONFIRMED", confirmedAt: now },
           });
         }
+
+        // Kurangi stok bahan sesuai resep (satu kali per transisi ke PAID).
+        await deductInventoryForOrder(tx, order.id);
 
         if (order.tableSessionId) {
           await tx.tableSession.update({

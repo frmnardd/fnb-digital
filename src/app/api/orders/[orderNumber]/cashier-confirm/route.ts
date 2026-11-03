@@ -6,6 +6,7 @@ import { readJsonBody } from "@/lib/api/request";
 import { db } from "@/lib/db";
 import { getServerEnv } from "@/lib/env";
 import { calculateCashChange, PricingError } from "@/lib/pricing";
+import { deductInventoryForOrder } from "@/lib/services/inventory";
 
 /**
  * POST /api/orders/[orderNumber]/cashier-confirm
@@ -150,6 +151,9 @@ export async function POST(request: NextRequest, context: RouteContext): Promise
           where: { id: order.id },
           data: { status: "CONFIRMED", confirmedAt: now },
         });
+
+        // Kurangi stok bahan sesuai resep (satu kali per transisi ke PAID).
+        await deductInventoryForOrder(tx, order.id);
 
         if (order.tableSessionId) {
           await tx.tableSession.update({
