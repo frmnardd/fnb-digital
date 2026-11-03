@@ -51,7 +51,7 @@
 - [x] **6.3 Tampilan Mobile Pelayan / Runner (`/(staff)/runner`)**: Buat halaman ringan untuk staf pelayan yang menampilkan daftar makanan yang siap diambil di dapur, daftar panggilan meja (*Call Waiter*), dan tombol ubah status meja selesai dibersihkan.
 
 ## Fase 7: Halaman Admin / Back-Office & Analitik
-- [ ] **7.1 CRUD Menu, Kategori, & Quick Toggle Stok 86'd**: Buat halaman pengelolaan menu lengkap dengan fitur *upload* gambar, pengaturan *Modifier Groups*, dan sakelar cepat untuk mematikan menu yang habis.
+- [x] **7.1 CRUD Menu, Kategori, & Quick Toggle Stok 86'd**: Buat halaman pengelolaan menu lengkap dengan fitur *upload* gambar, pengaturan *Modifier Groups*, dan sakelar cepat untuk mematikan menu yang habis.
 - [ ] **7.2 QR Code Table Studio (`/(admin)/admin/tables`)**: Buat halaman manajemen meja yang otomatis meng-generate desain kartu QR meja siap cetak (PDF/PNG) beserta tombol *Force Reset Session*.
 - [ ] **7.3 Manajemen Stok Bahan Baku & Resep (`Inventory & HPP`)**: Buat halaman pencatatan stok bahan baku, pengaturan resep per menu, dan log pengurangan stok otomatis saat pesanan selesai.
 - [ ] **7.4 Dashboard Analitik Penjualan & Menu Engineering**: Buat ringkasan omzet harian/bulanan, rincian metode pembayaran (QRIS vs VA vs Tunai), grafik jam sibuk (*peak hours*), dan matriks kuadran *Menu Engineering*.
