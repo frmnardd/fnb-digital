@@ -13,7 +13,7 @@
 * **Route baru**: `/kds/[station]` (ƒ), `GET /api/kds/orders` (ƒ).
 * **Verifikasi runtime**: `/kds/kitchen` & `/kds/bar` → **200** (header "Kitchen Display System", "Dapur", empty state "Tidak ada tiket", chip "terlambat"); `/kds/gudang` → **404**; API `station=GUDANG` → 422, `station=BAR` tanpa DB → 500 rapi.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 31 dari 31 sub-tugas Fase 1–6.1 selesai (TODO total 31 item; cek `TODO.md` untuk sisa fase 6–7).
+* **Progress**: 31 dari 37 sub-tugas selesai (Fase 1–5 tuntas; Fase 6 baru 1/3).
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
