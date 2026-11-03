@@ -24,7 +24,7 @@
 - [x] **3.3 Katalog Kartu Menu (`MenuCard`)**: Buat komponen kartu menu dengan gambar rasio 1:1, *badge* stok habis (*grayscale* jika *Out of Stock*), dan indikator jumlah item yang sudah masuk keranjang.
 - [x] **3.4 Bottom Sheet Kustomisasi Menu (`ModifierSheet`)**: Buat *slide-up drawer* untuk memilih opsi *Radio* (wajib), *Checkbox* (add-on opsional), catatan khusus per item, dan kalkulasi total harga item secara reaktif.
 - [x] **3.5 Store Keranjang & Sinkronisasi Group Order (`useCartStore`)**: Implementasikan Zustand store untuk keranjang pelanggan dengan sinkronisasi *real-time* satu meja (sehingga beberapa orang di meja yang sama melihat isi keranjang gabungan).
-- [ ] **3.6 Halaman Keranjang, Upselling, & Rincian Biaya**: Buat tampilan *drawer/page* keranjang yang menampilkan daftar pesanan, *widget cross-selling* rekomendasi camilan/minuman, input nama pelanggan & WhatsApp opsional, serta rincian transparan (Subtotal, *Service Charge*, PB1, Total).
+- [x] **3.6 Halaman Keranjang, Upselling, & Rincian Biaya**: Buat tampilan *drawer/page* keranjang yang menampilkan daftar pesanan, *widget cross-selling* rekomendasi camilan/minuman, input nama pelanggan & WhatsApp opsional, serta rincian transparan (Subtotal, *Service Charge*, PB1, Total).
 
 ## Fase 4: Sistem Pembayaran (QRIS, Transfer/VA, & Tunai di Kasir)
 - [ ] **4.1 API Pembuatan Order (`POST /api/orders`)**: Buat endpoint yang memvalidasi stok menu, menghitung ulang harga di *server*, menyimpan `Order` & `OrderItem`, dan menentukan alur berdasarkan metode bayar yang dipilih.

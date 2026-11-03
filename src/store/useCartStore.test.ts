@@ -36,7 +36,14 @@ function readState(): CartState {
 }
 
 beforeEach(() => {
-  useCartStore.setState({ tableSlug: null, sessionId: null, orderType: "DINE_IN", lines: [] });
+  useCartStore.setState({
+    tableSlug: null,
+    sessionId: null,
+    orderType: "DINE_IN",
+    lines: [],
+    customerName: "",
+    customerPhone: "",
+  });
 });
 
 describe("useCartStore — konteks meja", () => {
@@ -153,5 +160,27 @@ describe("useCartStore — selector", () => {
     assert.equal(selectQuantityByItem(state, "menu-nasi"), 2);
     assert.equal(selectQuantityByItem(state, "menu-teh"), 3);
     assert.equal(selectQuantityByItem(state, "menu-tidak-ada"), 0);
+  });
+});
+
+describe("useCartStore — data pemesan", () => {
+  it("menyimpan nama & nomor WhatsApp secara parsial", () => {
+    readState().setCustomer({ name: "Rina" });
+    assert.equal(readState().customerName, "Rina");
+    assert.equal(readState().customerPhone, "");
+
+    readState().setCustomer({ phone: "08123456789" });
+    assert.equal(readState().customerName, "Rina");
+    assert.equal(readState().customerPhone, "08123456789");
+  });
+
+  it("mengosongkan data pemesan saat pindah meja", () => {
+    readState().setContext({ tableSlug: "meja-01", sessionId: "sess-1" });
+    readState().setCustomer({ name: "Rina", phone: "08123456789" });
+
+    readState().setContext({ tableSlug: "meja-02", sessionId: "sess-2" });
+
+    assert.equal(readState().customerName, "");
+    assert.equal(readState().customerPhone, "");
   });
 });

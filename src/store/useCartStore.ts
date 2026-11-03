@@ -29,10 +29,15 @@ export interface CartState {
   sessionId: string | null;
   orderType: OrderType;
   lines: CartLine[];
+  /** Nama pemesan (opsional, dikirim ke dapur/struk). */
+  customerName: string;
+  /** Nomor WhatsApp opsional untuk e-struk / notifikasi pesanan siap. */
+  customerPhone: string;
 
   /** Menyimpan konteks meja; bila meja berbeda, keranjang dikosongkan. */
   setContext: (context: CartContext) => void;
   setOrderType: (orderType: OrderType) => void;
+  setCustomer: (customer: { name?: string; phone?: string }) => void;
   addLine: (line: CartLine) => void;
   setQuantity: (id: string, quantity: number) => void;
   removeLine: (id: string) => void;
@@ -48,17 +53,31 @@ export const useCartStore = create<CartState>()(
       sessionId: null,
       orderType: "DINE_IN",
       lines: [],
+      customerName: "",
+      customerPhone: "",
 
       setContext: ({ tableSlug, sessionId }) =>
         set((state) => {
           if (state.tableSlug !== tableSlug) {
-            return { tableSlug, sessionId, lines: [] };
+            return {
+              tableSlug,
+              sessionId,
+              lines: [],
+              customerName: "",
+              customerPhone: "",
+            };
           }
 
           return state.sessionId === sessionId ? state : { sessionId };
         }),
 
       setOrderType: (orderType) => set({ orderType }),
+
+      setCustomer: ({ name, phone }) =>
+        set((state) => ({
+          customerName: name === undefined ? state.customerName : name,
+          customerPhone: phone === undefined ? state.customerPhone : phone,
+        })),
 
       addLine: (line) => set((state) => ({ lines: mergeCartLines(state.lines, line) })),
 
@@ -82,6 +101,8 @@ export const useCartStore = create<CartState>()(
         sessionId: state.sessionId,
         orderType: state.orderType,
         lines: state.lines,
+        customerName: state.customerName,
+        customerPhone: state.customerPhone,
       }),
     },
   ),

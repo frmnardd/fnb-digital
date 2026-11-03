@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { CustomerHeader } from "@/components/customer/CustomerHeader";
+import { FloatingCartBar } from "@/components/customer/FloatingCartBar";
 import { MenuBrowser } from "@/components/customer/MenuBrowser";
 import { StartSessionButton } from "@/components/customer/StartSessionButton";
 import { ApiError } from "@/lib/api/errors";
@@ -55,7 +56,7 @@ export default async function CustomerTablePage({
         sessionStatus={session && session.status !== "CLOSED" ? session.status : null}
       />
 
-      <main className="flex flex-1 flex-col gap-3 px-4 py-4">
+      <main className="flex flex-1 flex-col gap-3 px-4 pb-28 pt-4">
         {session ? (
           <section className="flex items-center justify-between rounded-xl border bg-card p-3 shadow-card-soft">
             <span className="flex items-center gap-2 text-sm font-bold">
@@ -94,6 +95,8 @@ export default async function CustomerTablePage({
             </p>
           </section>
         )}
+
+        <FloatingCartBar categories={menuCategories} />
       </main>
     </div>
   );
