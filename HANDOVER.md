@@ -6,60 +6,57 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 5 — Halaman Kasir (POS Dashboard)` (7/9 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `5.7 Otorisasi PIN Supervisor` ✅
-* **Sub-Tugas yang Berikutnya**: `5.8 Manajemen Shift Kasir & Laci Kas`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**298 test**, 99 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
-* **Route baru**: `POST /api/pos/supervisor-authorize` (ƒ).
-* **Verifikasi kontrak HTTP**: body kosong → 422, PIN 4 digit → 422 ("PIN supervisor harus 6 digit"), email invalid → 422, `action` asing → 422 (daftar aksi disebut), payload valid → 500 rapi (DB belum ada); `/cashier` tetap **200**.
+* **Fase Aktif**: `Fase 5 — Halaman Kasir (POS Dashboard)` (8/9 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `5.8 Manajemen Shift Kasir & Laci Kas` ✅
+* **Sub-Tugas yang Berikutnya**: `5.9 Modul Cetak Struk Thermal ESC/POS` (penutup Fase 5)
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**303 test**, 100 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
+* **Route baru**: `GET /api/pos/shift`, `POST /api/pos/shift/open`, `POST /api/pos/shift/log`, `POST /api/pos/shift/close`, halaman `/cashier/shift` (ƒ).
+* **Verifikasi kontrak HTTP**: shift tanpa/`staffEmail` invalid → 422 (format Zod konsisten), valid tanpa DB → 500 rapi; open/log/close body kosong → 422; `/cashier/shift` → **200** ("Shift & Laci Kas", "Email kasir").
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 28 dari 31 sub-tugas selesai.
+* **Progress**: 29 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/security/authorization-token.ts` | **Baru** — `SUPERVISOR_ACTIONS` (VOID_ITEM/REFUND/MANUAL_DISCOUNT), `createAuthorizationToken` (HMAC-SHA256 + base64url, payload `sub/act/tid/iat/exp`), `verifyAuthorizationToken` (constant-time, cek kedaluwarsa), TTL 5 menit |
-| `src/lib/security/authorization-token.test.ts` | **Baru** — 8 test (payload, semua aksi, expired, signature palsu, payload diubah, token rusak) |
-| `src/lib/security/supervisor-pin.ts` | **Baru** — `isValidSupervisorPin` (6 digit), `verifySupervisorPin` (reuse `verifyPin` HMAC) |
-| `src/lib/security/supervisor-pin.test.ts` | **Baru** — 4 test |
-| `src/app/api/pos/supervisor-authorize/route.ts` | **Baru** — Zod strict, rate limit `pin-attempts` (kunci `supervisor:email:ip`), role `ADMIN`/`CASHIER`, respons token + `expiresAt`; tidak membocorkan `pinHash`; `TODO(RBAC)` |
-| `src/components/pos/SupervisorPinModal.tsx` | **Baru** — email staf + 6 kotak PIN (auto-focus/backspace), pesan sisa percobaan, `onAuthorized(token)` |
-| `src/components/pos/PosBillPanel.tsx` | Diperbarui — tombol **Void Item** & **Diskon Manual** (saat pembayaran belum lunas) membuka modal otorisasi; sukses menampilkan notice token 5 menit |
-| `TODO.md` | `5.7` ditandai `[x]` |
+| `src/lib/shift.ts` | **Baru** — `CASH_DRAWER_TYPES`/label, `summarizeDrawerLogs` (SALE/CASH_IN/CASH_OUT/REFUND, CLOSING_COUNT diabaikan), `computeExpectedCash`, `computeVariance`, `buildShiftSummary` |
+| `src/lib/shift.test.ts` | **Baru** — 9 test |
+| `src/lib/services/shift.ts` | **Baru** — `getCurrentShift(staffEmail)`: shift OPEN + log + ringkasan + jumlah transaksi tunai |
+| `src/app/api/pos/shift/route.ts` | **Baru** — GET ringkasan shift (`staffEmail` query, ZodError dinormalisasi) |
+| `src/app/api/pos/shift/open/route.ts` | **Baru** — buka shift + `CashDrawerLog OPENING_FLOAT`; 409 bila masih ada shift terbuka |
+| `src/app/api/pos/shift/log/route.ts` | **Baru** — catat `CASH_IN`/`CASH_OUT` (shift harus OPEN) |
+| `src/app/api/pos/shift/close/route.ts` | **Baru** — blind count: hitung ekspektasi & variance, tutup shift, catat `CLOSING_COUNT` |
+| `src/app/api/orders/[orderNumber]/cashier-confirm/route.ts` | Diperbarui — pembayaran tunai dikaitkan ke shift OPEN (`Payment.shiftId`) + `CashDrawerLog SALE` |
+| `src/components/pos/ShiftWorkspace.tsx` | **Baru** — buka shift (modal awal), ringkasan (modal/penjualan/kas masuk-keluar/refund/ekspektasi/transaksi), form mutasi kas, modal tutup shift (blind count), kartu **Z-Report** + `window.print()`, toggle suara |
+| `src/app/(pos)/cashier/shift/page.tsx` | **Baru** — render workspace (email default `kasir@fnb.local`) |
+| `src/components/pos/PosSidebar.tsx` | Diperbarui — "Shift" aktif menuju `/cashier/shift` |
+| `TODO.md` | `5.8` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`5.8 Manajemen Shift Kasir & Laci Kas (ShiftManagement)`**, ubah menjadi `[/]`.
-2. **Buat `src/lib/shift.ts`** (pure + `src/lib/shift.test.ts`):
-   * `computeShiftSummary({ startingCash, cashIn, cashOut })` → `{ expectedCash }` (modal awal + kas masuk − kas keluar).
-   * `computeVariance(actualEndingCash, expectedCash)` → selisih (boleh negatif).
-   * `CASH_DRAWER_TYPES` untuk label UI (`OPENING_FLOAT`, `CASH_IN`, `CASH_OUT`, `SALE`, `REFUND`, `CLOSING_COUNT`, `ADJUSTMENT`).
-   * `summarizeDrawerLogs(logs)` → total masuk/keluar per tipe.
-   * Uji: ringkasan, variance positif/negatif/nol, log kosong, agregasi tipe.
-3. **Endpoint** (`TODO(RBAC)`):
-   * `GET /api/pos/shift`: shift `OPEN` terakhir untuk kasir (parameter `staffEmail`) + ringkasan (`startingCash`, total `CASH_IN`/`CASH_OUT` dari `CashDrawerLog`, `expectedCash`) + jumlah transaksi tunai `PAID`.
-   * `POST /api/pos/shift/open`: body `{ staffEmail, startingCash }` → tolak bila sudah ada shift OPEN (409); buat `CashierShift` + `CashDrawerLog { type: OPENING_FLOAT }`.
-   * `POST /api/pos/shift/log`: body `{ shiftId, type: "CASH_IN"|"CASH_OUT", amount, reason? }` → validasi shift OPEN.
-   * `POST /api/pos/shift/close`: body `{ shiftId, actualEndingCash, notes? }` → hitung `expectedCash` & `variance`, set `CLOSED`+`closedAt`, catat `CLOSING_COUNT`.
-4. **Kaitkan pembayaran tunai ke shift**: pada `POST /api/orders/[orderNumber]/cashier-confirm` (aksi `MARK_PAID`), bila ada `CashierShift` berstatus `OPEN` → isi `Payment.shiftId` dan tambahkan `CashDrawerLog { type: "SALE", amount: grandTotal, orderId }`.
-5. **UI `/cashier/shift`** (aktifkan item "Shift" di `PosSidebar`):
-   * Bila belum ada shift: form **Buka Shift** (input modal awal Rupiah, tombol 56px).
-   * Bila ada shift: kartu ringkasan (modal awal, kas masuk, kas keluar, ekspektasi, transaksi tunai), form kas masuk/keluar, dan tombol **Tutup Shift** → modal *blind count* (`actualEndingCash`) menampilkan selisih + tombol **Cetak Z-Report** (`window.print()` dengan area cetak).
-   * Semua nominal `tabular-nums`.
-6. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`; probe `/cashier/shift` 200, endpoint body invalid → 422, tanpa DB → 500 rapi.
-7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `5.9 Modul Cetak Struk Thermal ESC/POS`), `git commit` (`feat(pos): add cashier shift and cash drawer management`), push.
+1. Ambil **`5.9 Modul Cetak Struk Thermal (src/lib/printer/escpos.ts)`**, ubah menjadi `[/]`.
+2. **Buat `src/lib/printer/escpos.ts`** (pure + `src/lib/printer/escpos.test.ts`):
+   * Konstanta perintah ESC/POS: `ESC @` (init), `ESC a n` (align), `ESC ! n` (font/bold), `GS V m` (cut), `ESC d n` (feed).
+   * `createEscPosBuilder({ paperWidth: 58 | 80 })` → objek dengan `init()`, `align()`, `bold()`, `text()`, `line()`, `divider()`, `columns(left, right, width)`, `qr()`, `feed()`, `cut()`, `toString()` (string biner) dan `toBytes()` (Uint8Array).
+   * `formatReceipt(order, options)` → `string[]` baris struk 32 kolom (58 mm) / 48 kolom (80 mm): header, nomor, meja/tipe, waktu (Asia/Jakarta), item + modifier, subtotal/service/PB1/total, pembayaran, footer.
+   * `toEscPos(order, options)` merangkai builder + baris struk + QR (bila ada).
+   * Uji: lebar kolom (32/48), potongan teks panjang, `columns` rata kanan, perintah init/align/cut ada di output, format struk memuat total & nomor pesanan, encoding ASCII aman.
+3. **Buat endpoint `GET /api/orders/[orderNumber]/receipt/escpos?width=58|80`** (`runtime = "nodejs"`): ambil order + items + payment, kembalikan `text/plain; charset=utf-8` berisi perintah ESC/POS (header `Cache-Control: no-store`). Jangan kirim `costPrice`.
+4. **Integrasi UI**: pada `PosBillPanel` setelah pembayaran lunas, tambahkan tombol **Cetak Struk Thermal** (56px) yang membuka `window.open('/api/orders/<no>/receipt/escpos?width=80')` (fallback: `fetch` + tampilkan instruksi); sertakan pemilih 58/80 mm.
+5. **Catat batasan**: browser tidak bisa mengirim byte mentah ke printer tanpa WebUSB/WebSerial atau jembatan lokal (mis. QZ Tray). Endpoint menyediakan payload ESC/POS siap pakai untuk agen cetak lokal; jangan mengklaim cetak langsung berhasil.
+6. **Verifikasi**: `npm test` (escpos), `typecheck`, `lint`, `build`; probe endpoint orderNumber invalid → 400, tanpa DB → 500 rapi; halaman POS tetap 200.
+7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke **Fase 6.1: Layar KDS Dapur & Barista**), `git commit` (`feat(printer): add escpos receipt formatting for 58mm and 80mm thermal printers`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Token otorisasi supervisor** bertanda tangan HMAC (`SESSION_SECRET`), berlaku 5 menit, berisi `act` + `tid`; endpoint aksi wajib memverifikasinya via `verifyAuthorizationToken`.
-* **PIN staf** 6 digit hashed HMAC (seed: `kasir@fnb.local/222222`, `admin@fnb.local/111111`). Rate limit 5 percobaan/10 menit per (email+IP), in-memory.
-* **Belum ada sesi staf/RBAC**: `staffEmail` masih dikirim dari body; sudah ditandai `TODO(RBAC)`.
-* **PENTING — jangan menulis file non-ASCII memakai PowerShell `Set-Content`/`Add-Content`** (menyebabkan mojibake & BOM). Gunakan `write`/`edit`.
+* **Shift**: ekspektasi kas = modal awal + penjualan tunai + kas masuk − kas keluar − refund; `CLOSING_COUNT` tidak dihitung sebagai arus kas. Variance = kas fisik − ekspektasi.
+* **Pembayaran tunai** otomatis mengait ke shift OPEN pada `cashier-confirm` (menambah `CashDrawerLog SALE`).
+* **Belum ada sesi staf/RBAC**: `staffEmail` dikirim dari body/query & di-prefill `kasir@fnb.local`; semua endpoint ditandai `TODO(RBAC)`.
+* **PENTING — jangan menulis file non-ASCII memakai PowerShell `Set-Content`/`Add-Content`** (mojibake & BOM). Gunakan `write`/`edit`.
 * **Satu jalur order**: `createOrder()` (`src/lib/services/order-creation.ts`) dipakai `POST /api/orders` & `/api/pos/walk-in`.
 * **POS/KDS** `.dark`, target sentuh 56px, `tabular-nums`, `h-dvh overflow-hidden` per panel.
 * **Rahasia**: `MIDTRANS_SERVER_KEY`, `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`.
 * **BUG SSR ZUSTAND**: `persist` tidak memasang `store.persist` saat storage tidak tersedia → guard.
-* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`.
-* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`.
+* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; biarkan `ZodError` naik ke `handleRouteError` agar format konsisten.
+* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf PIN 6 digit (`kasir@fnb.local/222222`).
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
 * **Memory files** ada di root repo **dan** `C:\Users\Firman Ardiansyah\Downloads\` — perbarui keduanya setiap sesi.
@@ -93,4 +90,5 @@
 * **[Sesi #1 — 2026-11-03 · 5.4 Floor Plan]**: `floor-plan.ts` (+7 test), service & API `/api/pos/tables`, `InteractiveFloorPlan`, `/cashier/floor`. Commit `2335760`.
 * **[Sesi #1 — 2026-11-03 · 5.5 Split/Merge/Move]**: `order-number.ts`, `split-bill.ts` (+13 test), API split/move/merge, `SplitBillModal`. Commit `e08a6f7`.
 * **[Sesi #1 — 2026-11-03 · 5.6 Walk-In]**: `services/order-creation.ts`, API & halaman walk-in, `walkin.ts` (+8 test), `WalkInWorkspace`. Commit `60d01ba`.
-* **[Sesi #1 — 2026-11-03 · 5.7 Supervisor PIN]**: `authorization-token.ts` (+8 test), `supervisor-pin.ts` (+4 test), API `supervisor-authorize` (rate limit + role), `SupervisorPinModal`, tombol Void/Diskon di bill panel. 298 test lulus; probe 422 & 500 rapi. Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 5.7 Supervisor PIN]**: `authorization-token.ts` (+8 test), `supervisor-pin.ts` (+4 test), API `supervisor-authorize`, `SupervisorPinModal`. Commit `916aad4`.
+* **[Sesi #1 — 2026-11-03 · 5.8 Shift & Laci Kas]**: `shift.ts` (+9 test), service & 4 endpoint shift, `ShiftWorkspace` (buka/tutup, blind count, Z-report), pembayaran tunai terhubung ke shift (`shiftId` + SALE log). 303 test lulus; probe 422/500 & halaman 200. Commit menyusul.

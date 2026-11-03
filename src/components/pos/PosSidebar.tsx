@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { key: "queue", label: "Antrean", icon: LayoutList, href: "/cashier" },
   { key: "floor", label: "Meja", icon: LayoutGrid, href: "/cashier/floor" },
   { key: "walkin", label: "Walk-in", icon: PlusSquare, href: "/cashier/walkin" },
-  { key: "shift", label: "Shift", icon: Wallet, href: null },
+  { key: "shift", label: "Shift", icon: Wallet, href: "/cashier/shift" },
   { key: "reports", label: "Laporan", icon: BarChart3, href: null },
 ] as const;
 

@@ -113,6 +113,16 @@ export async function POST(request: NextRequest, context: RouteContext): Promise
       }
 
       await db.$transaction(async (tx) => {
+        // Kaitkan pembayaran tunai ke shift yang sedang terbuka (bila ada).
+        const openShift =
+          payment.method === "CASH"
+            ? await tx.cashierShift.findFirst({
+                where: { status: "OPEN" },
+                orderBy: { openedAt: "desc" },
+                select: { id: true },
+              })
+            : null;
+
         await tx.payment.update({
           where: { id: payment.id },
           data: {
@@ -120,8 +130,21 @@ export async function POST(request: NextRequest, context: RouteContext): Promise
             paidAt: now,
             amountPaid,
             changeAmount,
+            ...(openShift === null ? {} : { shiftId: openShift.id }),
           },
         });
+
+        if (openShift) {
+          await tx.cashDrawerLog.create({
+            data: {
+              shiftId: openShift.id,
+              type: "SALE",
+              amount: order.grandTotal,
+              reason: `Pembayaran tunai ${orderNumber}`,
+              orderId: order.id,
+            },
+          });
+        }
 
         await tx.order.update({
           where: { id: order.id },
