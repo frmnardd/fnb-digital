@@ -96,7 +96,7 @@ export default async function CustomerTablePage({
           </section>
         )}
 
-        <FloatingCartBar categories={menuCategories} />
+        <FloatingCartBar categories={menuCategories} tableSlug={table.qrSlug} />
       </main>
     </div>
   );

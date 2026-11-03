@@ -1,6 +1,7 @@
 "use client";
 
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import {
@@ -28,21 +29,27 @@ export function CartSheet({
   open,
   onOpenChange,
   categories,
+  tableSlug,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: PublicCategory[];
+  tableSlug: string;
 }) {
+  const router = useRouter();
   const lines = useCartStore((state) => state.lines);
   const setQuantity = useCartStore((state) => state.setQuantity);
   const removeLine = useCartStore((state) => state.removeLine);
   const addLine = useCartStore((state) => state.addLine);
+  const clear = useCartStore((state) => state.clear);
   const customerName = useCartStore((state) => state.customerName);
   const customerPhone = useCartStore((state) => state.customerPhone);
   const setCustomer = useCartStore((state) => state.setCustomer);
   const orderType = useCartStore((state) => state.orderType);
 
   const [customizingItem, setCustomizingItem] = useState<PublicMenuItem | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const breakdown = useMemo(() => calculateCartBreakdown(lines), [lines]);
   const suggestions = useMemo(() => getUpsellSuggestions(categories, lines), [categories, lines]);
@@ -81,6 +88,64 @@ export function CartSheet({
       note: payload.note,
     });
     setCustomizingItem(null);
+  }
+
+  /**
+   * Mengirim keranjang ke `POST /api/orders` (harga dihitung ulang server),
+   * lalu mengarahkan pelanggan ke halaman pembayaran QRIS.
+   */
+  async function handleCheckout() {
+    if (isSubmitting || lines.length === 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType,
+          tableSlug,
+          paymentMethod: "QRIS_DYNAMIC",
+          items: lines.map((line) => ({
+            menuItemId: line.menuItemId,
+            quantity: line.quantity,
+            // ID modifier berformat "groupId:optionId" — server hanya butuh optionId.
+            modifierOptionIds: line.modifiers
+              .map((modifier) => modifier.id.split(":").slice(1).join(":"))
+              .filter((optionId) => optionId.length > 0),
+            ...(line.note.length > 0 ? { note: line.note } : {}),
+          })),
+          ...(customerName.trim().length > 0 ? { customerName: customerName.trim() } : {}),
+          ...(customerPhone.trim().length > 0 ? { customerPhone: customerPhone.trim() } : {}),
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        data?: { order?: { orderNumber?: string } };
+        error?: { message?: string };
+      } | null;
+
+      const createdOrderNumber = payload?.data?.order?.orderNumber;
+
+      if (!response.ok || !createdOrderNumber) {
+        setSubmitError(payload?.error?.message ?? "Gagal membuat pesanan. Coba lagi.");
+        return;
+      }
+
+      clear();
+      onOpenChange(false);
+      router.push(
+        `/t/${encodeURIComponent(tableSlug)}/pay/${encodeURIComponent(createdOrderNumber)}`,
+      );
+    } catch {
+      setSubmitError("Tidak dapat menghubungi server. Periksa koneksi Anda.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -239,12 +304,19 @@ export function CartSheet({
           </section>
 
           <div className="flex flex-col gap-1">
-            <Button className="w-full" disabled>
-              Lanjut ke Pembayaran
+            <Button className="w-full" onClick={() => void handleCheckout()} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+              {isSubmitting ? "Membuat pesanan…" : "Lanjut ke Pembayaran"}
             </Button>
-            <p className="text-center text-[10px] text-muted-foreground">
-              Pembayaran &amp; pengiriman pesanan tersedia pada langkah berikutnya.
-            </p>
+            {submitError ? (
+              <p role="alert" className="text-center text-[11px] font-semibold text-danger">
+                {submitError}
+              </p>
+            ) : (
+              <p className="text-center text-[10px] text-muted-foreground">
+                Anda akan diarahkan ke halaman pembayaran QRIS.
+              </p>
+            )}
           </div>
         </div>
       )}

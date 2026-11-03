@@ -6,51 +6,62 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 4 — Sistem Pembayaran` (1/6 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `4.1 API Pembuatan Order` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `4.2 Integrasi Pembayaran QRIS Dinamis & Tombol Unduh QR`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**150 test**, 47 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔. Route baru: `/api/orders` (ƒ).
-* **Verifikasi kontrak HTTP `/api/orders`** (tanpa DB): body kosong → 422, `items: []` → 422, `paymentMethod` tak dikenal → 422, `quantity: 0` → 422, `DINE_IN` tanpa `tableSlug` → 422, field harga dari klien (`price`) → **ditolak 422 "Unrecognized key(s)"**, payload valid → 500 berformat benar (DB belum ada).
+* **Fase Aktif**: `Fase 4 — Sistem Pembayaran` (2/6 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `4.2 Integrasi Pembayaran QRIS Dinamis & Tombol Unduh QR` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `4.3 Integrasi Pembayaran Transfer Bank (Virtual Account & Transfer Manual Kode Unik)`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**166 test**, 53 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
+* **Route aktif**: `/api/menu`, `/api/orders`, `/api/orders/[orderNumber]/payment/qris`, `/api/orders/[orderNumber]/payment/status`, `/api/tables/[qrSlug]/session`, `/api/tables/[qrSlug]/call-waiter`, `/t/[tableSlug]`, `/t/[tableSlug]/pay/[orderNumber]` (semua ƒ).
+* **Verifikasi kontrak HTTP** (tanpa DB): `POST qris` orderNumber invalid → 400, `GET status` invalid → 400, keduanya valid → 500 berformat benar; halaman bayar → **HTTP 200** (fallback "Sistem belum siap").
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 16 dari 31 sub-tugas selesai.
+* **Progress**: 17 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/order-draft.ts` | **Baru** — `PAYMENT_METHODS` (tuple `as const`), `PaymentMethodKey`, `OrderDraftError` (`EMPTY_CART`/`MENU_NOT_FOUND`/`MENU_UNAVAILABLE`/`MODIFIER_INVALID`/`QUANTITY_INVALID`/`INVALID_PAYMENT_METHOD`), `resolveModifiers()` (opsi harus milik grup menu + aturan SINGLE/maxSelect), `buildOrderDraft()` (hitung ulang harga, diskon, kode unik hanya `MANUAL_TRANSFER`) |
-| `src/lib/order-draft.test.ts` | **Baru** — 18 test (recompute, harga klien diabaikan, multi-baris, diskon, kode unik, seluruh jalur error, `resolveModifiers`) |
-| `src/lib/menu-mapper.ts` | Diperbarui — ekspor `MenuItemRow` & `toPublicMenuItem()` (dipakai route order) |
-| `src/app/api/orders/route.ts` | **Baru** — Zod strict (tolak field asing/harga klien), ambil katalog DB, `buildOrderDraft`, transaksi `order` + `OrderItem` (snapshot nama/stasiun/modifier) + `Payment` (PENDING, provider, `expiresAt` 15 menit untuk pembayaran online), update `lastActivityAt` sesi, `orderNumber` `ORD-####` dengan retry `P2002` maks 5×, status awal `CASH`/`EDC_CARD` → `WAITING_CASHIER_APPROVAL`, lainnya `PENDING_PAYMENT` |
-| `TODO.md` | `4.1` ditandai `[x]` |
+| `src/lib/payment/types.ts` | **Baru** — `QrisInstruction`, `PaymentConfigError`, `PaymentGatewayError` |
+| `src/lib/payment/qris.ts` | **Baru** — EMVCo TLV (`encodeTlv`/`parseTlv`), `crc16Ccitt` (CCITT-FALSE, vector `29B1`), `buildStaticQris`, `buildDynamicQris` (tag 54 nominal, tag 01 = 12, ref label 62/05, CRC 63), `validateQrisPayload`, `createDemoStaticPayload` |
+| `src/lib/payment/qris.test.ts` | **Baru** — 16 test (CRC vector, TLV round-trip, payload valid, nominal & reference, regenerate, tombol error, tidak memutasi input) |
+| `src/lib/payment/midtrans.ts` | **Baru** — `createQrisCharge()` via `fetch` (sandbox/production, Basic auth, timeout 15 dtk, ekstraksi `qr_string`/`actions[generate-qr-code]`) |
+| `src/app/api/orders/[orderNumber]/payment/qris/route.ts` | **Baru** — idempoten (pakai `Payment` PENDING yang belum kedaluwarsa), mode `gateway` atau `demo` (fallback `PaymentConfigError`), simpan `gatewayPayload { qrString, qrUrl, mode }`, TTL 15 menit |
+| `src/app/api/orders/[orderNumber]/payment/status/route.ts` | **Baru** — status order + payment terakhir untuk polling |
+| `src/components/customer/PaymentQrisPanel.tsx` | **Baru** — ambil QR dari API, hitung mundur, polling 5 dtk, tombol Simpan (fetch→blob→download) & Salin, fallback `<textarea>` payload, badge "QR kedaluwarsa" + Buat ulang, catatan mode demo |
+| `src/app/(customer)/t/[tableSlug]/pay/[orderNumber]/page.tsx` | **Baru** — server component ringkasan order + `PaymentQrisPanel`, fallback 200 saat DB belum siap |
+| `src/components/customer/CartSheet.tsx` | **Diperbarui** — `tableSlug` prop, `handleCheckout()` (POST `/api/orders` dengan `modifierOptionIds` hasil split `groupId:optionId`, nama/WA opsional), lalu `clear()` + `router.push` ke halaman bayar |
+| `src/components/customer/FloatingCartBar.tsx` | Diperbarui — meneruskan `tableSlug` ke `CartSheet` |
+| `src/lib/env.ts`, `.env.example` | Ditambah `MIDTRANS_SERVER_KEY`, `MIDTRANS_IS_PRODUCTION`, `QRIS_STATIC_PAYLOAD` (opsional) |
+| `TODO.md` | `4.2` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`4.2 Integrasi Pembayaran QRIS Dinamis & Tombol Unduh QR`**, ubah menjadi `[/]`.
-2. **Buat modul pembayaran `src/lib/payment/`** (tanpa dependency baru):
-   * `types.ts`: `QrisPayload { qrString: string; expiresAt: Date; providerRef?: string }`, `PaymentConfigError`.
-   * `qris.ts`: generator **EMVCo QRIS dinamis** murni — `crc16Ccitt(payload)` (poligon `0x1021`, init `0xFFFF`), `buildDynamicQris({ staticPayload, amount, merchantRef })` → ganti tag `54` (transaction amount) & `62` (additional data) pada payload statis, hitung ulang tag `63` (CRC). **Unit test wajib**: vector CRC yang diketahui (`"123456789"` → `0x31C3`), payload hasil punya tag 54 & 63 valid, panjang & format TLV benar.
-   * `midtrans.ts`: adapter `createQrisTransaction(order)` memakai `MIDTRANS_SERVER_KEY` + `fetch` ke `https://api.midtrans.com/v2/charge` (sandbox: `api.sandbox.midtrans.com`); bila kunci kosong → lempar `PaymentConfigError` sehingga route memakai **mode demo** (`buildDynamicQris` dengan `QRIS_STATIC_PAYLOAD` dari env atau payload contoh).
-   * Tambahkan `QRIS_STATIC_PAYLOAD` & `MIDTRANS_IS_PRODUCTION` ke `.env.example` + `src/lib/env.ts` (opsional, jangan wajib).
-3. **Buat `POST /api/orders/[orderNumber]/payment/qris`** (`force-dynamic`): cari order via `orderNumber` (select `id, status, grandTotal, uniqueCode`), tolak bila status bukan `PENDING_PAYMENT` (409), ambil/generate `Payment` metode `QRIS_DYNAMIC` (idempoten: pakai `Payment` PENDING terakhir bila belum kedaluwarsa), panggil adapter, simpan `gatewayRefId`/`gatewayPayload`, respons `{ data: { orderNumber, amount, qrString, expiresAt, mode: "gateway" | "demo" } }`. **Jangan** log `MIDTRANS_SERVER_KEY`/payload sensitif.
-4. **Buat halaman tunggu pembayaran `src/app/(customer)/t/[tableSlug]/pay/[orderNumber]/page.tsx`** (server component + client countdown):
-   * Tampilkan nomor pesanan, total (`tabular-nums`), **countdown** sampai `expiresAt` (client component, `setInterval`, berhenti di 0 lalu tampilkan tombol "Buat ulang QR"), tombol **"Simpan QRIS"** dan "Salin kode QR".
-   * **Render QR**: BELUM boleh menambah package QR tanpa izin pengguna. Gunakan **sementara** `<img src="https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=<encodeURIComponent(qrString)>">` (beri komentar `TODO(4.2): ganti ke encoder lokal setelah izin package qrcode`), plus `<textarea readOnly>` berisi `qrString` sebagai fallback. Tombol simpan memakai `fetch(qrUrl) → blob → <a download>` dengan penanganan CORS gagal (tampilkan pesan "tekan lama pada gambar untuk menyimpan").
-   * Polling status ringan: `GET /api/orders/[orderNumber]/payment/status` (buat sekalian) yang mengembalikan `{ status, paidAt }`; halaman berhenti polling setelah `PAID`.
-5. **Sambungkan CTA**: `CartSheet` "Lanjut ke Pembayaran" — setelah 4.1 ada, aktifkan: kirim `POST /api/orders` (body dari `useCartStore`: `orderType`, `tableSlug`, `items[{menuItemId,quantity,modifierOptionIds,note}]`, `paymentMethod`), lalu `router.push` ke halaman pembayaran sesuai metode (QRIS dulu). `modifierOptionIds` diambil dari `line.modifiers[].id` (format `groupId:optionId` → ambil bagian `optionId`).
-6. **Verifikasi**: `npm test` (CRC & payload), `typecheck`, `lint`, `build`, probe HTTP (order tidak ada → 404, body tanpa `orderNumber` → 400, tanpa DB → 500 rapi).
-7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `4.3 Transfer Bank: VA & Transfer Manual Kode Unik`), `git commit` (`feat(payment): add dynamic qris generation and payment waiting page`), push.
+1. Ambil **`4.3 Integrasi Pembayaran Transfer Bank (Virtual Account & Transfer Manual Kode Unik)`**, ubah menjadi `[/]`.
+2. **Pemilihan metode pembayaran harus terjadi SEBELUM order dibuat** (karena `Payment.method` disimpan saat create):
+   * Tambahkan selector metode di `CartSheet` (radio list ≥ 48px): `QRIS_DYNAMIC`, `VIRTUAL_ACCOUNT`, `MANUAL_TRANSFER`, `CASH` (Bayar di Kasir). Simpan pilihan sebagai state lokal sheet (default QRIS) lalu kirim ke `POST /api/orders`.
+   * Setelah sukses, arahkan sesuai metode: QRIS → `/t/[slug]/pay/[orderNumber]/qris`, VA → `.../va`, MANUAL_TRANSFER → `.../manual`, CASH → (4.4) `.../cashier`.
+   * **Pindahkan** halaman QRIS: buat `pay/[orderNumber]/qris/page.tsx` berisi `PaymentQrisPanel` (pindahkan dari `pay/[orderNumber]/page.tsx`), dan jadikan `pay/[orderNumber]/page.tsx` sebagai **hub pemilihan metode** (menampilkan ringkasan order + 3–4 tombol metode; jangan membuat order baru di hub).
+3. **Virtual Account** (`src/lib/payment/va.ts` + test):
+   * `BANK_OPTIONS` (BCA, Mandiri, BNI, BRI) dengan kode & label.
+   * `buildVirtualAccount({ bank, orderNumber, amount })` → nomor VA demo deterministik (mis. `8808` + 10 digit dari hash orderNumber) + `expiresAt`; validator `isValidBank(bank)`.
+   * Route `POST /api/orders/[orderNumber]/payment/va` (body Zod `{ bank }`): validasi order `PENDING_PAYMENT`, idempoten terhadap `Payment` VA PENDING yang valid, simpan `gatewayPayload { bank, vaNumber }`, respons `{ bank, vaNumber, amount, expiresAt, mode }`.
+   * Halaman `pay/[orderNumber]/va/page.tsx` + client: daftar bank, tampilkan nomor VA besar (`tabular-nums`), tombol **Salin VA** (clipboard + fallback), hitung mundur, polling status.
+4. **Transfer Manual** (`src/lib/payment/manual-transfer.ts` + test):
+   * `MANUAL_TRANSFER` memakai `order.grandTotal` yang SUDAH memuat `uniqueCode` 3 digit (dihitung di 4.1) — jangan menghitung ulang.
+   * `formatTransferInstruction({ bankAccounts, amount, uniqueCode, orderNumber })` + `validateProofDescriptor({ fileName, size, mimeType })` (maks 2 MB, `image/jpeg|png|webp|application/pdf`).
+   * Route `POST /api/orders/[orderNumber]/payment/manual` (info rekening + nominal + instruksi) dan `POST /api/orders/[orderNumber]/payment/proof` (**multipart** `request.formData()`): validasi file, simpan ke `public/uploads/proofs/<orderNumber>-<timestamp>.<ext>` (buat folder bila belum ada; `/public/uploads` sudah di-`.gitignore`), update `Payment.proofImageUrl` + tetap `PENDING` (validasi manual oleh kasir di 5.2), respons `{ proofImageUrl }`.
+   * Halaman `pay/[orderNumber]/manual/page.tsx` + client: nominal + kode unik, daftar rekening (copy), form upload bukti (preview, progress), status "menunggu verifikasi kasir", polling status.
+5. **Verifikasi**: `npm test` (va/manual helper), `typecheck`, `lint`, `build`, probe HTTP (body `bank` invalid → 422, orderNumber invalid → 400, tanpa DB → 500 rapi; upload tanpa file → 422).
+6. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `4.4 Alur Pembayaran Tunai di Kasir`), `git commit` (`feat(payment): add virtual account and manual transfer flows`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **QRIS tanpa kredensial**: mode `demo` memakai payload statis + generator EMVCo lokal. Jangan pernah mengklaim pembayaran nyata sudah teruji; webhook asli baru di 4.5.
-* **Package QR**: `qrcode` / `react-qr-code` BELUM diizinkan. Minta izin pengguna bila ingin render QR lokal (image service sementara di atas sudah cukup untuk MVP).
-* **JANGAN percaya harga klien**: `POST /api/orders` sudah menolak field asing (strict Zod) dan menghitung ulang dengan `buildOrderDraft()`. Pertahankan pola ini di endpoint pembayaran (hanya butuh `orderNumber`).
-* **Status order**: `CASH`/`EDC_CARD` → `WAITING_CASHIER_APPROVAL`; `QRIS_DYNAMIC`/`VIRTUAL_ACCOUNT`/`MANUAL_TRANSFER` → `PENDING_PAYMENT`.
-* **Order number**: `ORD-0001` berurutan dari `count()+1` dengan retry `P2002` (5×). Bila nanti volume tinggi, pertimbangkan sequence PostgreSQL (butuh migrasi).
-* **Urutan kalkulasi (WAJIB)**: subtotal → diskon → service 5% → PB1 10% → `uniqueCode` (khusus `MANUAL_TRANSFER`), semuanya di `src/lib/pricing.ts`.
+* **QRIS mode demo**: tanpa `MIDTRANS_SERVER_KEY`, payload dibuat lokal (`buildDynamicQris`) dari `QRIS_STATIC_PAYLOAD` / `createDemoStaticPayload()`. Pembayaran nyata belum teruji — jangan klaim lunas otomatis (itu tugas webhook 4.5).
+* **Gambar QR**: encoder QR lokal BELUM diizinkan (butuh izin package `qrcode`). Sementara memakai `api.qrserver.com` + fallback teks. Ada `TODO(4.2)` di `PaymentQrisPanel`.
+* **Download QR**: `fetch → blob → <a download>`; bila CORS gagal tampilkan instruksi tekan-lama.
+* **`Payment.gatewayRefId` unik** — mode demo memakai `demo-<orderNumber>-<timestamp>`.
+* **Harga**: server selalu menghitung ulang (`buildOrderDraft`) dan Zod strict menolak field `price` dari klien.
+* **Urutan kalkulasi (WAJIB)**: subtotal → diskon → service 5% → PB1 10% → `uniqueCode` (khusus `MANUAL_TRANSFER`).
 * **BUG SSR ZUSTAND (jangan diulang)**: `persist` tidak memasang `store.persist` saat storage tidak tersedia → guard `const persistApi = useCartStore.persist; if (!persistApi) {...}`.
-* **Sinkronisasi keranjang**: hanya lintas tab/origin sama (`BroadcastChannel`); multi-device butuh Supabase Realtime.
-* **Rahasia**: `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`, `MIDTRANS_SERVER_KEY` — jangan pernah ke klien/log.
-* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; urutan validasi env → slug/query → body → DB.
+* **Sinkronisasi keranjang**: lintas tab/origin sama (`BroadcastChannel`); multi-device butuh Supabase Realtime.
+* **Rahasia**: `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`, `MIDTRANS_SERVER_KEY` — jangan ke klien/log.
+* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; urutan validasi env → slug/param → body → DB.
 * **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
@@ -73,5 +84,6 @@
 * **[Sesi #1 — 2026-11-03 · 3.3 Kartu Menu]**: `getOrderabilityLabel/Text`, `MenuCard` final. Commit `d69ee24`.
 * **[Sesi #1 — 2026-11-03 · 3.4 Modifier Sheet]**: `modifier-selection.ts` (+21 test), `ModifierSheet`. Commit `35ecdb4`.
 * **[Sesi #1 — 2026-11-03 · 3.5 Cart Store & Sync]**: `cart.ts` (+13), `useCartStore` (+11), `cart-sync`, fix bug SSR `persist`. Commit `6787d5b`.
-* **[Sesi #1 — 2026-11-03 · 3.6 Cart Sheet & Upselling]**: `upsell.ts` (+9), `cart-totals.ts` (+6), data pemesan di store (+2), `FloatingCartBar` + `CartSheet`. Fase 3 tuntas. Commit `6f551dc`.
-* **[Sesi #1 — 2026-11-03 · 4.1 API Orders]**: `order-draft.ts` (+18 test) + `POST /api/orders` (recompute server, transaksi order+payment, orderNumber retry, status awal sesuai metode). 150 test lulus; kontrak HTTP divalidasi (menolak field `price` dari klien). Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 3.6 Cart Sheet & Upselling]**: `upsell.ts` (+9), `cart-totals.ts` (+6), `FloatingCartBar` + `CartSheet`. Fase 3 tuntas. Commit `6f551dc`.
+* **[Sesi #1 — 2026-11-03 · 4.1 API Orders]**: `order-draft.ts` (+18 test) + `POST /api/orders`. Commit `4a60c78`.
+* **[Sesi #1 — 2026-11-03 · 4.2 QRIS]**: `payment/qris.ts` (+16 test, EMVCo CRC), adapter Midtrans, API qris & status, `PaymentQrisPanel` + halaman bayar, CTA keranjang → order → halaman bayar. 166 test lulus; probe HTTP & halaman bayar 200. Commit menyusul.

@@ -48,7 +48,13 @@ export function CartSummaryBar({ totalQuantity, subtotal, onOpen }: CartSummaryB
   );
 }
 
-export function FloatingCartBar({ categories }: { categories: PublicCategory[] }) {
+export function FloatingCartBar({
+  categories,
+  tableSlug,
+}: {
+  categories: PublicCategory[];
+  tableSlug: string;
+}) {
   const lines = useCartStore((state) => state.lines);
   const hydrated = useCartHydrated();
   const [isOpen, setIsOpen] = useState(false);
@@ -69,7 +75,12 @@ export function FloatingCartBar({ categories }: { categories: PublicCategory[] }
         />
       </div>
 
-      <CartSheet open={isOpen} onOpenChange={setIsOpen} categories={categories} />
+      <CartSheet
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        categories={categories}
+        tableSlug={tableSlug}
+      />
     </>
   );
 }

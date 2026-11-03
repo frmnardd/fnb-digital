@@ -28,6 +28,13 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url("NEXT_PUBLIC_APP_URL harus berupa URL valid.").optional(),
 
   PAYMENT_PROVIDER: z.enum(["midtrans", "xendit", "manual"]).optional(),
+
+  // Kredensial payment gateway (opsional — tanpa ini QRIS memakai mode demo).
+  MIDTRANS_SERVER_KEY: z.string().optional(),
+  MIDTRANS_IS_PRODUCTION: z.enum(["true", "false"]).optional(),
+
+  /** Payload QRIS statis merchant untuk mode demo/generator lokal. */
+  QRIS_STATIC_PAYLOAD: z.string().min(20).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
