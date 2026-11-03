@@ -55,3 +55,9 @@
 - [x] **7.2 QR Code Table Studio (`/(admin)/admin/tables`)**: Buat halaman manajemen meja yang otomatis meng-generate desain kartu QR meja siap cetak (PDF/PNG) beserta tombol *Force Reset Session*.
 - [x] **7.3 Manajemen Stok Bahan Baku & Resep (`Inventory & HPP`)**: Buat halaman pencatatan stok bahan baku, pengaturan resep per menu, dan log pengurangan stok otomatis saat pesanan selesai.
 - [x] **7.4 Dashboard Analitik Penjualan & Menu Engineering**: Buat ringkasan omzet harian/bulanan, rincian metode pembayaran (QRIS vs VA vs Tunai), grafik jam sibuk (*peak hours*), dan matriks kuadran *Menu Engineering*.
+
+## Fase 8: Kesiapan Produksi (Deploy & Keamanan)
+- [x] **8.1 Artefak Deploy VPS + Supabase**: Tambahkan `ecosystem.config.cjs` (PM2), `deploy/nginx.conf`, `scripts/deploy.sh`, `scripts/backup-db.sh`, script `db:deploy`, `.gitattributes` (LF untuk skrip), perbaiki `README.md` & `.env.example`.
+- [ ] **8.2 Autentikasi Staf & RBAC**: Login staf (email + PIN), cookie sesi httpOnly, middleware proteksi `(pos)`, `(kds)`, `(staff)`, `(admin)`, hapus `staffEmail` dari body/query, audit `TODO(RBAC)`.
+- [ ] **8.3 Seed Bahan Baku & Resep Contoh**: Isi `Ingredient` + `MenuRecipe` agar HPP dan menu engineering punya data nyata saat demo.
+- [ ] **8.4 Higiene Produksi**: Bersihkan data uji (order/shift), rotasi kredensial yang pernah terekspos, ganti PIN staf seed, dokumentasikan hasil uji E2E.

@@ -44,3 +44,7 @@ yarn-error.log*
 
 # uploads lokal (bukti transfer)
 /public/uploads
+
+# log PM2 & backup database (jangan di-commit)
+/logs
+/backups
