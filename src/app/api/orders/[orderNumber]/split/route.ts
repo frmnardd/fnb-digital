@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ApiError, handleRouteError, jsonOk } from "@/lib/api/errors";
 import { readJsonBody } from "@/lib/api/request";
+import { requireStaffApi } from "@/lib/auth/staff";
 import { db } from "@/lib/db";
 import { getServerEnv } from "@/lib/env";
 import {
@@ -84,6 +85,9 @@ function mapSplitError(error: SplitBillError): ApiError {
 export async function POST(request: NextRequest, context: RouteContext): Promise<Response> {
   try {
     getServerEnv();
+
+    // Split bill hanya untuk kasir/admin.
+    await requireStaffApi(["ADMIN", "CASHIER"]);
 
     const { orderNumber } = await context.params;
 

@@ -31,7 +31,6 @@ export function SupervisorPinModal({
   targetId?: string;
   onAuthorized: (token: string) => void;
 }) {
-  const [staffEmail, setStaffEmail] = useState("");
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -69,7 +68,7 @@ export function SupervisorPinModal({
   async function handleSubmit() {
     const pin = digits.join("");
 
-    if (pin.length !== 6 || staffEmail.trim().length === 0 || isSubmitting) {
+    if (pin.length !== 6 || isSubmitting) {
       return;
     }
 
@@ -81,7 +80,6 @@ export function SupervisorPinModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          staffEmail: staffEmail.trim(),
           pin,
           action,
           ...(targetId === undefined ? {} : { targetId }),
@@ -115,21 +113,9 @@ export function SupervisorPinModal({
       open={open}
       onOpenChange={onOpenChange}
       title={`Otorisasi ${ACTION_LABEL[action]}`}
-      description="Masukkan email staf dan PIN supervisor 6 digit."
+      description="Masukkan PIN supervisor 6 digit (PIN akun yang sedang login)."
     >
       <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold">Email staf</span>
-          <input
-            type="email"
-            value={staffEmail}
-            onChange={(event) => setStaffEmail(event.target.value)}
-            placeholder="kasir@fnb.local"
-            autoComplete="off"
-            className="h-12 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </label>
-
         <div className="flex flex-col gap-1.5">
           <span className="flex items-center gap-1.5 text-xs font-bold">
             <ShieldCheck className="size-3.5 text-primary" aria-hidden />
@@ -168,7 +154,7 @@ export function SupervisorPinModal({
 
         <button
           type="button"
-          disabled={isSubmitting || digits.join("").length !== 6 || staffEmail.trim().length === 0}
+          disabled={isSubmitting || digits.join("").length !== 6}
           onClick={() => void handleSubmit()}
           className="flex min-h-touch items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-extrabold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >

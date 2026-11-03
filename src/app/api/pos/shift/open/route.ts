@@ -3,15 +3,15 @@ import { z } from "zod";
 
 import { ApiError, handleRouteError, jsonOk } from "@/lib/api/errors";
 import { readJsonBody } from "@/lib/api/request";
+import { requireStaffApi } from "@/lib/auth/staff";
 import { db } from "@/lib/db";
 import { getServerEnv } from "@/lib/env";
 
 /**
  * POST /api/pos/shift/open
  *
- * Membuka shift kasir baru (modal awal) dan mencatat `OPENING_FLOAT` pada laci kas.
- *
- * TODO(RBAC): ganti `staffEmail` body dengan identitas dari sesi staf.
+ * Membuka shift kasir baru (modal awal) untuk staf yang sedang login,
+ * sekaligus mencatat `OPENING_FLOAT` pada laci kas.
  */
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,6 @@ export const runtime = "nodejs";
 
 const bodySchema = z
   .object({
-    staffEmail: z.string().trim().toLowerCase().email("Email staf tidak valid."),
     startingCash: z.number().int().min(0, "Modal awal tidak boleh negatif."),
   })
   .strict();
@@ -28,15 +27,16 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     getServerEnv();
 
+    const session = await requireStaffApi(["ADMIN", "CASHIER"]);
     const input = bodySchema.parse(await readJsonBody(request));
 
     const staff = await db.staff.findUnique({
-      where: { email: input.staffEmail },
+      where: { id: session.sub },
       select: { id: true, name: true, isActive: true },
     });
 
     if (!staff || !staff.isActive) {
-      throw new ApiError("NOT_FOUND", "Staf tidak ditemukan atau tidak aktif.");
+      throw new ApiError("FORBIDDEN", "Akun staf tidak aktif. Silakan login ulang.");
     }
 
     const existing = await db.cashierShift.findFirst({
@@ -45,7 +45,10 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
 
     if (existing) {
-      throw new ApiError("CONFLICT", "Masih ada shift terbuka. Tutup shift tersebut terlebih dahulu.");
+      throw new ApiError(
+        "CONFLICT",
+        "Masih ada shift terbuka. Tutup shift tersebut terlebih dahulu.",
+      );
     }
 
     const shift = await db.$transaction(async (tx) => {

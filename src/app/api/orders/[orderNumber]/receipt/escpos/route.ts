@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { ApiError, handleRouteError } from "@/lib/api/errors";
+import { requireStaffApi } from "@/lib/auth/staff";
 import { db } from "@/lib/db";
 import { getServerEnv } from "@/lib/env";
 import {
@@ -48,6 +49,9 @@ function parseModifierNames(value: unknown): string[] {
 export async function GET(request: NextRequest, context: RouteContext): Promise<Response> {
   try {
     getServerEnv();
+
+    // Struk thermal hanya untuk layar kasir.
+    await requireStaffApi(["ADMIN", "CASHIER"]);
 
     const { orderNumber } = await context.params;
 

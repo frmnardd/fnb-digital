@@ -32,9 +32,9 @@ export interface CurrentShiftView {
   logs: ShiftLogView[];
 }
 
-export async function getCurrentShift(staffEmail: string): Promise<CurrentShiftView | null> {
+export async function getCurrentShift(staffId: string): Promise<CurrentShiftView | null> {
   const staff = await db.staff.findUnique({
-    where: { email: staffEmail },
+    where: { id: staffId },
     select: { id: true, name: true },
   });
 

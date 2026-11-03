@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ApiError, handleRouteError, jsonOk } from "@/lib/api/errors";
 import { readJsonBody } from "@/lib/api/request";
+import { requireStaffApi } from "@/lib/auth/staff";
 import { db } from "@/lib/db";
 import { getServerEnv } from "@/lib/env";
 import {
@@ -25,10 +26,10 @@ import { verifySupervisorPin } from "@/lib/security/supervisor-pin";
  * bertanda tangan (berlaku 5 menit) yang dapat diverifikasi endpoint aksi.
  *
  * Keamanan: PIN tidak pernah dikembalikan; pembatasan 5 percobaan / 10 menit
- * per (email + IP) memakai `pin-attempts`.
+ * per (staf + IP) memakai `pin-attempts`.
  *
- * TODO(RBAC): endpoint ini belum memakai sesi staf; ganti `staffEmail` di body
- * dengan identitas dari sesi setelah modul autentikasi staf dibuat.
+ * Staf diambil dari sesi login; PIN diverifikasi terhadap `Staff.pinHash` milik
+ * staf tersebut (bukan dari email yang dikirim klien).
  */
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,6 @@ export const runtime = "nodejs";
 
 const bodySchema = z
   .object({
-    staffEmail: z.string().trim().toLowerCase().email("Email staf tidak valid."),
     pin: z.string().regex(/^\d{6}$/, "PIN supervisor harus 6 digit angka."),
     action: z.enum(SUPERVISOR_ACTIONS),
     targetId: z.string().min(1).max(64).optional(),
@@ -49,10 +49,11 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     getServerEnv();
 
+    const session = await requireStaffApi(["ADMIN", "CASHIER"]);
     const input = bodySchema.parse(await readJsonBody(request));
 
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-    const attemptKey = `supervisor:${input.staffEmail}:${clientIp}`;
+    const attemptKey = `supervisor:${session.sub}:${clientIp}`;
 
     if (isPinLocked(attemptKey)) {
       throw new ApiError(
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     const staff = await db.staff.findUnique({
-      where: { email: input.staffEmail },
+      where: { id: session.sub },
       select: { id: true, name: true, role: true, pinHash: true, isActive: true },
     });
 

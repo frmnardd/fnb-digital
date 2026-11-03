@@ -142,11 +142,12 @@ Webhook Midtrans: `https://<domain>/api/webhooks/payment`.
 
 ## Keamanan & batasan saat ini
 
-- **Belum ada autentikasi staf (RBAC).** Endpoint POS/KDS/Runner/Admin masih terbuka dan ditandai `TODO(RBAC)`. Jangan diekspos publik sebelum modul login staf selesai.
+- **Login staf (RBAC)** aktif: `/login` (email + PIN 6 digit) → cookie sesi `httpOnly` 12 jam. Middleware melindungi `/cashier`, `/kds`, `/runner`, `/admin` beserta API-nya; area admin hanya untuk peran `ADMIN`. Halaman pelanggan tetap publik.
 - Gambar QR meja masih memakai layanan `api.qrserver.com` (interim).
 - Struk ESC/POS menghasilkan payload mentah; cetak langsung butuh jembatan lokal (QZ Tray/WebUSB).
 - `imageUrl` menu masih berupa input teks (belum ada unggah berkas).
 - Rate-limit PIN bersifat in-memory (hilang saat restart, tidak cocok untuk multi-instance).
+- Ganti PIN staf hasil seed dan `SESSION_SECRET` sebelum produksi.
 
 ## Struktur folder
 

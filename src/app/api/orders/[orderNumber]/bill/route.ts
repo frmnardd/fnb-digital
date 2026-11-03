@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { ApiError, handleRouteError, jsonOk } from "@/lib/api/errors";
+import { requireStaffApi } from "@/lib/auth/staff";
 import { db } from "@/lib/db";
 import { getServerEnv } from "@/lib/env";
 import type { PosBillDetail, PosBillModifier } from "@/types/pos";
@@ -47,6 +48,9 @@ function parseModifiers(value: unknown): PosBillModifier[] {
 export async function GET(_request: NextRequest, context: RouteContext): Promise<Response> {
   try {
     getServerEnv();
+
+    // Tagihan hanya untuk layar kasir.
+    await requireStaffApi(["ADMIN", "CASHIER"]);
 
     const { orderNumber } = await context.params;
 

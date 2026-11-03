@@ -28,8 +28,7 @@ function digitsOnly(value: string): string {
   return value.replace(/\D/g, "").slice(0, 9);
 }
 
-export function ShiftWorkspace({ initialStaffEmail }: { initialStaffEmail: string }) {
-  const [staffEmail, setStaffEmail] = useState(initialStaffEmail);
+export function ShiftWorkspace() {
   const [shift, setShift] = useState<CurrentShiftView | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,10 +54,7 @@ export function ShiftWorkspace({ initialStaffEmail }: { initialStaffEmail: strin
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/pos/shift?staffEmail=${encodeURIComponent(staffEmail.trim())}`,
-        { cache: "no-store" },
-      );
+      const response = await fetch("/api/pos/shift", { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as ShiftEnvelope | null;
 
       if (!response.ok) {
@@ -74,7 +70,7 @@ export function ShiftWorkspace({ initialStaffEmail }: { initialStaffEmail: strin
     } finally {
       setIsLoading(false);
     }
-  }, [staffEmail]);
+  }, []);
 
   useEffect(() => {
     void loadShift();
@@ -128,7 +124,6 @@ export function ShiftWorkspace({ initialStaffEmail }: { initialStaffEmail: strin
     }
 
     const result = await postJson("/api/pos/shift/open", {
-      staffEmail: staffEmail.trim(),
       startingCash: cash,
     });
 
@@ -238,14 +233,9 @@ export function ShiftWorkspace({ initialStaffEmail }: { initialStaffEmail: strin
         <main className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2 print-hidden">
             <h1 className="text-sm font-extrabold">Shift & Laci Kas</h1>
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-              Email kasir
-              <input
-                value={staffEmail}
-                onChange={(event) => setStaffEmail(event.target.value)}
-                className="h-10 rounded-lg border border-input bg-background px-2 text-[11px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </label>
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              Kasir: sesi login aktif
+            </span>
           </div>
 
           {isLoading ? (

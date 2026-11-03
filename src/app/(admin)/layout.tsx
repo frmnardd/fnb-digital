@@ -1,6 +1,7 @@
 import { BarChart3, Boxes, LayoutDashboard, QrCode, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 
+import { requireStaffPage } from "@/lib/auth/staff";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,7 +16,9 @@ const NAV = [
   { href: "/admin/analytics", label: "Analitik", icon: BarChart3, enabled: false },
 ] as const;
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  await requireStaffPage(["ADMIN"]);
+
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground md:flex-row">
       <aside className="flex shrink-0 flex-col gap-1 border-b border-border bg-card p-3 md:w-[220px] md:border-b-0 md:border-r">

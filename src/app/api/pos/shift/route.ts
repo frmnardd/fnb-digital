@@ -1,38 +1,29 @@
-import type { NextRequest } from "next/server";
-import { z } from "zod";
-
 import { handleRouteError, jsonOk } from "@/lib/api/errors";
+import { requireStaffApi } from "@/lib/auth/staff";
 import { getServerEnv } from "@/lib/env";
 import { getCurrentShift } from "@/lib/services/shift";
 
 /**
- * GET /api/pos/shift?staffEmail=...
+ * GET /api/pos/shift
  *
- * Ringkasan shift kasir yang sedang terbuka beserta mutasi laci kas.
+ * Ringkasan shift kasir yang sedang terbuka untuk staf yang login.
  * `null` berarti belum ada shift terbuka.
- *
- * TODO(RBAC): ganti `staffEmail` query dengan identitas dari sesi staf.
  */
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const querySchema = z.object({
-  staffEmail: z.string().trim().toLowerCase().email("Email staf tidak valid."),
-});
-
-export async function GET(request: NextRequest): Promise<Response> {
+export async function GET(): Promise<Response> {
   try {
     getServerEnv();
 
-    // ZodError ditangani `handleRouteError` → 422 dengan format konsisten.
-    const query = querySchema.parse(
-      Object.fromEntries(request.nextUrl.searchParams.entries()),
-    );
+    const session = await requireStaffApi(["ADMIN", "CASHIER"]);
+    const shift = await getCurrentShift(session.sub);
 
-    const shift = await getCurrentShift(query.staffEmail);
-
-    return jsonOk({ shift });
+    return jsonOk({
+      shift,
+      staff: { id: session.sub, name: session.name, role: session.role },
+    });
   } catch (error) {
     return handleRouteError(error);
   }

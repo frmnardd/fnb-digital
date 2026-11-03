@@ -1,4 +1,4 @@
-import { BarChart3, LayoutGrid, LayoutList, PlusSquare, Wallet } from "lucide-react";
+import { BarChart3, LayoutGrid, LayoutList, LogOut, PlusSquare, Wallet } from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -70,6 +70,16 @@ export function PosSidebar({ active }: { active: PosNavKey }) {
           </Link>
         );
       })}
+
+      <Link
+        href="/api/auth/staff/logout"
+        prefetch={false}
+        aria-label="Keluar dari sesi staf"
+        className={cn(ITEM_BASE, "mt-auto border border-border text-muted-foreground hover:text-danger")}
+      >
+        <LogOut className="size-5" aria-hidden />
+        <span className="leading-none">Keluar</span>
+      </Link>
     </nav>
   );
 }
