@@ -6,51 +6,57 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 5 — Halaman Kasir (POS Dashboard)` (3/9 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `5.3 Kalkulator Pembayaran Tunai (CashPaymentModal)` ✅
-* **Sub-Tugas yang Berikutnya**: `5.4 Peta Meja Interaktif (InteractiveFloorPlan)`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**257 test**, 83 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
-* **Verifikasi runtime**: `/cashier` → **HTTP 200** (panel "Antrean Pesanan", "Pilih pesanan" tampil; tombol "Bayar Tunai" baru muncul setelah ada pesanan terpilih dari DB).
+* **Fase Aktif**: `Fase 5 — Halaman Kasir (POS Dashboard)` (4/9 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `5.4 Peta Meja Interaktif` ✅
+* **Sub-Tugas yang Berikutnya**: `5.5 Split Bill, Gabung Tagihan, & Pindah Meja`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**264 test**, 86 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
+* **Verifikasi runtime**: `/cashier/floor` → **HTTP 200** (empty state "Belum ada meja" karena DB belum ada); `/cashier` → 200 dan sidebar kini memuat tautan `/cashier/floor`; `GET /api/pos/tables` tanpa DB → 500 rapi.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 24 dari 31 sub-tugas selesai.
+* **Progress**: 25 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/cash.ts` | **Baru** — `CASH_DENOMINATIONS` (20k/50k/100k), `getCashShortcuts(total)` (uang pas + pecahan ≥ total, unik & terurut), `parseCashInput`/`formatCashInput` (maks 9 digit) |
-| `src/lib/cash.test.ts` | **Baru** — 11 test (shortcut, dedup, total tidak valid, parsing, pembatasan digit, format) |
-| `src/components/ui/modal.tsx` | **Baru** — modal terpusat via `createPortal` + Framer Motion, Esc/backdrop, kunci scroll, tombol tutup 56px (pelengkap `bottom-sheet` mobile) |
-| `src/components/pos/CashPaymentModal.tsx` | **Baru** — total besar, input uang diterima, keypad numerik 56px (`1–9`, `00`, `0`, hapus), chip `getCashShortcuts`, kembalian reaktif, tombol "Bayar & Lunas" memanggil `cashier-confirm` lalu `onPaid(change)` |
-| `src/components/pos/PosBillPanel.tsx` | Diperbarui — metode CASH kini memakai tombol **Bayar Tunai** → `CashPaymentModal`; non-tunai tetap "Konfirmasi Lunas" (transfer manual wajib bukti); inline cash input dihapus |
-| `TODO.md` | `5.3` ditandai `[x]` |
+| `src/lib/floor-plan.ts` | **Baru** — `TABLE_STATUS_META` (label + kelas warna per status), `formatSeatedDuration` ("12 mnt"/"1 j 05 mnt", aman clock-skew), `getFloorPlanSummary` |
+| `src/lib/floor-plan.test.ts` | **Baru** — 7 test (meta lengkap, 0/59/60/65 menit, pembulatan, negatif, ringkasan) |
+| `src/types/pos.ts` | Ditambah `PosTableStatus`, `PosFloorSession`, `PosFloorTable`, `PosFloorArea` |
+| `src/lib/services/pos-tables.ts` | **Baru** — `getPosFloorPlan()`: area + meja + sesi aktif + **total bill berjalan** (sum `grandTotal` order non-CANCELLED) |
+| `src/app/api/pos/tables/route.ts` | **Baru** — `GET` denah meja (tanpa `currentPin`) |
+| `src/components/pos/PosSidebar.tsx` | Diperbarui — item ber-`href` memakai `Link` (`/cashier`, `/cashier/floor`), sisanya tombol disabled; `aria-current` untuk aktif |
+| `src/components/pos/InteractiveFloorPlan.tsx` | **Baru** — tab area, ringkasan status, grid meja (status berwarna, kapasitas, bill berjalan), panel detail (tamu/durasi/bill), tombol "Pindah Meja"/"Gabung Tagihan" (Soon), polling 10 dtk + jam 30 dtk |
+| `src/components/pos/FloorWorkspace.tsx` | **Baru** — sidebar + topbar (suara) + denah |
+| `src/app/(pos)/cashier/floor/page.tsx` | **Baru** — server component + fallback `[]` |
+| `TODO.md` | `5.4` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`5.4 Peta Meja Interaktif (InteractiveFloorPlan)`**, ubah menjadi `[/]`.
-2. **Buat `src/lib/floor-plan.ts`** (pure + `src/lib/floor-plan.test.ts`):
-   * `TABLE_STATUS_META` untuk `AVAILABLE`/`OCCUPIED`/`NEEDS_CLEANING` (label, kelas warna Tailwind, deskripsi).
-   * `formatSeatedDuration(openedAt: Date, now: Date)` → "12 mnt", "1 j 05 mnt" (dibulatkan ke bawah, aman untuk durasi negatif → "0 mnt").
-   * `getFloorPlanSummary(tables)` → `{ available, occupied, cleaning }`.
-   * Uji: meta status, format durasi (0/59/60/65 menit), ringkasan hitungan.
-3. **Buat `GET /api/pos/tables`** (`force-dynamic`): kembalikan `areas` + `tables` dengan `status`, `capacity`, `positionX/Y`, dan untuk meja `OCCUPIED`/`BILL_REQUESTED`: sesi aktif (`openedAt`, `guestCount`) dan **total bill berjalan** (`sum grandTotal` order di sesi tersebut yang status belum `CANCELLED`). Gunakan `select` eksplisit; jangan kirim `currentPin`/data internal.
-4. **Buat `src/components/pos/InteractiveFloorPlan.tsx`** (client):
-   * Tab area (lantai) + grid meja (`grid-cols-3 sm:grid-cols-4 lg:grid-cols-6`), setiap kartu ≥ 88px, `tabular-nums`, warna status (OCCUPIED primary, AVAILABLE secondary, NEEDS_CLEANING warning) + ikon `Users`.
-   * Klik meja → panel info (di bawah/kanan): nomor, area, kapasitas, status, durasi duduk (diperbarui tiap 30 dtk), total bill, dan tombol non-aktif untuk aksi 5.5 ("Pindah Meja", "Gabung") dengan label "Soon".
-   * Polling ringan `GET /api/pos/tables` tiap 10 dtk; hentikan saat tab tidak aktif (`document.visibilityState`) bila mudah.
-5. **Tambahkan halaman `src/app/(pos)/cashier/floor/page.tsx`** (server: muat data via helper yang sama dengan API, fallback `[]` + empty state), dan **aktifkan** item "Meja" pada `PosSidebar` (`available: true`, tautan `/cashier/floor`) — klik harus menavigasi (`usePathname` untuk menandai aktif, atau kirim prop `active` dari masing-masing halaman).
-6. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`, probe `GET /cashier/floor` → **200** dan `GET /api/pos/tables` tanpa DB → 500 rapi.
-7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `5.5 Split Bill, Gabung Tagihan, & Pindah Meja`), `git commit` (`feat(pos): add interactive floor plan with live table status`), push.
+1. Ambil **`5.5 Split Bill, Gabung Tagihan, & Pindah Meja`**, ubah menjadi `[/]`.
+2. **Buat `src/lib/split-bill.ts`** (pure + `src/lib/split-bill.test.ts`):
+   * `splitItemsBySelection(items, selectedIds)` → `{ moved, remaining }` (validasi: semua id harus ada, keduanya tidak boleh kosong).
+   * `recalculateTotalsFromItems(items, options?)` → `{ subtotal, serviceCharge, taxAmount, grandTotal }` memakai `calculateOrderTotals` (buang `discount`/`uniqueCode` saat split; `uniqueCode` 0).
+   * `splitEqually(total, parts)` → array nominal sama + sisa dibagikan ke part pertama (Rupiah bulat).
+   * Uji: pemisahan item, validasi id asing, total setelah split, pembagian rata (sisa 1 rupiah), input tidak valid.
+3. **Buat 3 endpoint** (semua `TODO(RBAC)` + validasi Zod strict):
+   * `POST /api/orders/[orderNumber]/split`: body `{ itemIds: string[] }` → pindahkan `OrderItem` terpilih ke order baru (`orderNumber` baru via pola 4.1, status sama dengan order asal, `tableSessionId` sama), lalu **hitung ulang** total kedua order dari item masing-masing (pakai `recalculateTotalsFromItems`), simpan. Tolak bila order bukan `CONFIRMED`/`PENDING_PAYMENT` atau item tidak milik order.
+   * `POST /api/sessions/[sessionId]/move-table`: body `{ targetTableNumber: string }` → pastikan sesi aktif & meja target `AVAILABLE`/`isActive`; pindahkan `TableSession.tableId`, set meja asal `NEEDS_CLEANING`, meja target `OCCUPIED`; tolak bila target = meja asal atau target tidak tersedia.
+   * `POST /api/sessions/[sessionId]/merge`: body `{ sourceSessionId: string }` → pindahkan seluruh `Order` dari sesi sumber ke sesi target, tutup sesi sumber (`CLOSED`, `closedAt`), set meja sumber `NEEDS_CLEANING`; tolak sumber = target atau sesi sumber tidak aktif.
+4. **UI**:
+   * `InteractiveFloorPlan`: aktifkan tombol **Pindah Meja** (modal pilih meja target dari area yang sama/berbeda, hanya meja `AVAILABLE`) dan **Gabung Tagihan** (modal pilih sesi aktif lain) — panggil endpoint, tampilkan loading/error, lalu muat ulang denah.
+   * `PosBillPanel`: tambahkan tombol **Split Bill** yang membuka `SplitBillModal` (centang item, tampilkan total bagian terpilih vs sisa, konfirmasi → endpoint split → reload bill + `router.refresh()`).
+   * Gunakan `Modal` yang sudah ada (`src/components/ui/modal.tsx`), tombol 56px, `tabular-nums`.
+5. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`; probe: split/move/merge dengan orderNumber/sessionId invalid → 400, body invalid → 422, tanpa DB → 500 rapi; `/cashier/floor` & `/cashier` tetap 200.
+6. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `5.6 Modul Kasir Input Manual / Walk-In`), `git commit` (`feat(pos): add split bill, merge sessions, and move table flows`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
 * **Autentikasi staf (RBAC) belum ada** — endpoint kasir belum terlindungi (`TODO(RBAC)`); jangan menulis klaim keamanan.
-* **Pembayaran tunai**: dihitung & dieksekusi lewat `CashPaymentModal` → `POST /cashier-confirm` (`amountReceived`), kembalian dari `calculateCashChange`.
-* **Perhitungan uang**: `src/lib/cash.ts` (shortcut & parsing) + `src/lib/pricing.ts` (`calculateCashChange`, `formatRupiah`). Jangan menulis ulang.
-* **POS/KDS** memakai `.dark`, target sentuh 56px, angka `tabular-nums`, `h-dvh overflow-hidden` per panel.
-* **Suara notifikasi** via Web Audio (tanpa file), aktif setelah toggle.
+* **Bill berjalan** = total `grandTotal` order non-CANCELLED dalam sesi aktif; jangan memotong stok di sini (7.3).
+* **Total order** selalu dihitung ulang server-side (`src/lib/pricing.ts`); setelah split, service/PB1 dihitung dari subtotal bagian masing-masing.
+* **POS/KDS** memakai `.dark`, target sentuh 56px, `tabular-nums`, `h-dvh overflow-hidden` per panel.
+* **Pembayaran tunai** via `CashPaymentModal` → `POST /cashier-confirm`; kembalian `calculateCashChange`.
+* **Suara notifikasi** via Web Audio, aktif setelah toggle.
 * **E-Struk PDF** memakai `window.print()`; PDF server-side belum diizinkan.
-* **Mode demo pembayaran**: QRIS/VA lokal; bukti transfer di `public/uploads/proofs`; webhook tanpa signature hanya bila `PAYMENT_ALLOW_UNSIGNED_WEBHOOK=true`.
+* **Mode demo pembayaran**: QRIS/VA lokal; bukti transfer `public/uploads/proofs`; webhook tanpa signature hanya bila `PAYMENT_ALLOW_UNSIGNED_WEBHOOK=true`.
 * **Rahasia**: `MIDTRANS_SERVER_KEY`, `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`.
-* **Harga**: server selalu menghitung ulang (`buildOrderDraft`); urutan subtotal → diskon → service 5% → PB1 10% → `uniqueCode` (khusus `MANUAL_TRANSFER`).
 * **BUG SSR ZUSTAND (jangan diulang)**: `persist` tidak memasang `store.persist` saat storage tidak tersedia → guard `const persistApi = useCartStore.persist; if (!persistApi) {...}`.
 * **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`.
 * **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
@@ -83,4 +89,5 @@
 * **[Sesi #1 — 2026-11-03 · 4.6 Tracker & E-Struk]**: `order-tracking.ts` (+14 test), API `track`, `OrderTracker`, e-struk 80 mm. Commit `02f7877`.
 * **[Sesi #1 — 2026-11-03 · 5.1 POS 3-Panel]**: `notification.ts` (+4 test), komponen POS, layout dark, `/cashier`. Commit `165f938`.
 * **[Sesi #1 — 2026-11-03 · 5.2 Validasi Bayar]**: `calculateCashChange` (+4 test), API `bill` & `cashier-confirm`, `PosBillPanel` interaktif. Commit `10b7368`.
-* **[Sesi #1 — 2026-11-03 · 5.3 Cash Modal]**: `cash.ts` (+11 test), `ui/modal.tsx`, `CashPaymentModal` (keypad 56px, chip pecahan, kembalian reaktif), integrasi ke `PosBillPanel`. 257 test lulus; `/cashier` 200. Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 5.3 Cash Modal]**: `cash.ts` (+11 test), `ui/modal.tsx`, `CashPaymentModal`, integrasi bill panel. Commit `7dbc98a`.
+* **[Sesi #1 — 2026-11-03 · 5.4 Floor Plan]**: `floor-plan.ts` (+7 test), service & API `/api/pos/tables`, `InteractiveFloorPlan`, `FloorWorkspace`, halaman `/cashier/floor`, sidebar dengan `Link` aktif. 264 test lulus; floor 200 & link sidebar terverifikasi. Commit menyusul.

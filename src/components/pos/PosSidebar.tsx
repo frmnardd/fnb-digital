@@ -1,21 +1,25 @@
 import { BarChart3, LayoutGrid, LayoutList, PlusSquare, Wallet } from "lucide-react";
+import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
 /**
  * Sidebar navigasi POS (ikon besar, target sentuh 56px).
- * Menu yang halamannya belum dibangun ditandai "Soon" dan dinonaktifkan.
+ * Menu yang halamannya belum dibangun dinonaktifkan dan ditandai "(segera hadir)".
  */
 
 const NAV_ITEMS = [
-  { key: "queue", label: "Antrean", icon: LayoutList, available: true },
-  { key: "floor", label: "Meja", icon: LayoutGrid, available: false },
-  { key: "walkin", label: "Walk-in", icon: PlusSquare, available: false },
-  { key: "shift", label: "Shift", icon: Wallet, available: false },
-  { key: "reports", label: "Laporan", icon: BarChart3, available: false },
+  { key: "queue", label: "Antrean", icon: LayoutList, href: "/cashier" },
+  { key: "floor", label: "Meja", icon: LayoutGrid, href: "/cashier/floor" },
+  { key: "walkin", label: "Walk-in", icon: PlusSquare, href: null },
+  { key: "shift", label: "Shift", icon: Wallet, href: null },
+  { key: "reports", label: "Laporan", icon: BarChart3, href: null },
 ] as const;
 
 export type PosNavKey = (typeof NAV_ITEMS)[number]["key"];
+
+const ITEM_BASE =
+  "flex min-h-touch min-w-touch w-14 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-bold transition";
 
 export function PosSidebar({ active }: { active: PosNavKey }) {
   return (
@@ -27,23 +31,43 @@ export function PosSidebar({ active }: { active: PosNavKey }) {
         const Icon = item.icon;
         const isActive = item.key === active;
 
-        return (
-          <button
-            key={item.key}
-            type="button"
-            disabled={!item.available}
-            title={item.available ? item.label : `${item.label} (segera hadir)`}
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "flex min-h-touch min-w-touch w-14 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-bold transition",
-              isActive && "bg-primary/15 text-primary",
-              !isActive && item.available && "text-muted-foreground hover:bg-secondary hover:text-foreground",
-              !item.available && "cursor-not-allowed text-muted-foreground/40",
-            )}
-          >
+        const className = cn(
+          ITEM_BASE,
+          isActive && "bg-primary/15 text-primary",
+          !isActive && item.href !== null && "text-muted-foreground hover:bg-secondary hover:text-foreground",
+          item.href === null && "cursor-not-allowed text-muted-foreground/40",
+        );
+
+        const content = (
+          <>
             <Icon className="size-5" aria-hidden />
             <span className="leading-none">{item.label}</span>
-          </button>
+          </>
+        );
+
+        if (item.href === null) {
+          return (
+            <button
+              key={item.key}
+              type="button"
+              disabled
+              title={`${item.label} (segera hadir)`}
+              className={className}
+            >
+              {content}
+            </button>
+          );
+        }
+
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            aria-current={isActive ? "page" : undefined}
+            className={className}
+          >
+            {content}
+          </Link>
         );
       })}
     </nav>

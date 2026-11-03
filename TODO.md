@@ -38,7 +38,7 @@
 - [x] **5.1 Layout Utama POS 3-Panel & Notifikasi Suara**: Bangun kerangka halaman `/(pos)/cashier` dengan *Sidebar Navigasi*, *Panel Tengah*, *Panel Detail Tagihan Kanan*, serta sistem peringatan audio (*sound alert*) untuk pesanan baru dan panggilan meja.
 - [x] **5.2 Tab Antrean Pesanan QR & Validasi Bayar Tunai/Bukti Transfer**: Buat tampilan antrean pesanan masuk untuk memverifikasi pembayaran *Pay at Cashier* atau mengecek foto bukti transfer manual dalam 1 klik.
 - [x] **5.3 Kalkulator Pembayaran Tunai & Eksekusi Lunas (`CashPaymentModal`)**: Buat modal pembayaran kasir dengan tombol pecahan uang cepat (`Uang Pas`, `Rp 50.000`, `Rp 100.000`), kalkulasi kembalian otomatis, dan pemicu cetak struk.
-- [ ] **5.4 Peta Meja Interaktif (`InteractiveFloorPlan`)**: Buat tampilan grid meja per lantai dengan indikator warna status meja, durasi duduk pelanggan, dan total tagihan berjalan (*Open Bill*).
+- [x] **5.4 Peta Meja Interaktif (`InteractiveFloorPlan`)**: Buat tampilan grid meja per lantai dengan indikator warna status meja, durasi duduk pelanggan, dan total tagihan berjalan (*Open Bill*).
 - [ ] **5.5 Fitur Split Bill, Gabung Tagihan, & Pindah Meja**: Buat antarmuka untuk memisahkan tagihan (*Split by Item* atau *Split Equally*) serta memindahkan sesi pesanan ke nomor meja lain.
 - [ ] **5.6 Modul Kasir Input Manual (`Walk-In / Takeaway POS`)**: Buat katalog menu cepat di layar kasir bagi pelanggan yang langsung memesan di depan meja kasir tanpa scan QR.
 - [ ] **5.7 Otorisasi PIN Supervisor (Void / Refund / Diskon Manual)**: Buat komponen modal input PIN 6-Digit Manajer sebelum kasir diizinkan membatalkan item yang sudah masuk dapur atau memberikan potongan harga khusus.

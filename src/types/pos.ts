@@ -71,3 +71,31 @@ export interface PosBillDetail {
   items: PosBillItem[];
   payment: PosBillPayment | null;
 }
+
+export type PosTableStatus = "AVAILABLE" | "OCCUPIED" | "NEEDS_CLEANING";
+
+export interface PosFloorSession {
+  id: string;
+  guestCount: number;
+  /** ISO string waktu sesi dibuka. */
+  openedAt: string;
+}
+
+export interface PosFloorTable {
+  id: string;
+  tableNumber: string;
+  capacity: number;
+  status: PosTableStatus;
+  positionX: number | null;
+  positionY: number | null;
+  session: PosFloorSession | null;
+  /** Total tagihan berjalan pada sesi aktif (0 bila tidak ada sesi). */
+  runningBill: number;
+}
+
+export interface PosFloorArea {
+  id: string;
+  name: string;
+  floor: number;
+  tables: PosFloorTable[];
+}
