@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { buildCartLineId } from "@/lib/cart";
 import { calculateCartBreakdown } from "@/lib/cart-totals";
 import { formatRupiah } from "@/lib/pricing";
+import { cn } from "@/lib/utils";
 import { describeLineModifiers, getUpsellSuggestions } from "@/lib/upsell";
 import { useCartStore } from "@/store/useCartStore";
 import type { PublicCategory, PublicMenuItem } from "@/types/menu";
@@ -24,6 +25,24 @@ import type { PublicCategory, PublicMenuItem } from "@/types/menu";
  * Semua nominal berasal dari `calculateCartBreakdown()` → `calculateOrderTotals()`
  * sehingga identik dengan perhitungan server saat order dibuat (4.1).
  */
+
+/** Metode pembayaran yang bisa dipilih pelanggan sebelum order dibuat. */
+type PaymentSelection = "QRIS_DYNAMIC" | "VIRTUAL_ACCOUNT" | "MANUAL_TRANSFER" | "CASH";
+
+const PAYMENT_OPTIONS: Array<{ value: PaymentSelection; label: string; hint: string }> = [
+  { value: "QRIS_DYNAMIC", label: "QRIS", hint: "Scan & bayar instan" },
+  { value: "VIRTUAL_ACCOUNT", label: "Transfer VA", hint: "Nomor Virtual Account" },
+  { value: "MANUAL_TRANSFER", label: "Transfer Manual", hint: "Nominal + kode unik 3 digit" },
+  { value: "CASH", label: "Bayar di Kasir", hint: "Bayar tunai / EDC di kasir" },
+];
+
+/** Segmen URL halaman pembayaran per metode (kasir memakai hub). */
+const PAYMENT_ROUTE: Record<PaymentSelection, string> = {
+  QRIS_DYNAMIC: "qris",
+  VIRTUAL_ACCOUNT: "va",
+  MANUAL_TRANSFER: "manual",
+  CASH: "",
+};
 
 export function CartSheet({
   open,
@@ -50,6 +69,7 @@ export function CartSheet({
   const [customizingItem, setCustomizingItem] = useState<PublicMenuItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentSelection>("QRIS_DYNAMIC");
 
   const breakdown = useMemo(() => calculateCartBreakdown(lines), [lines]);
   const suggestions = useMemo(() => getUpsellSuggestions(categories, lines), [categories, lines]);
@@ -109,7 +129,7 @@ export function CartSheet({
         body: JSON.stringify({
           orderType,
           tableSlug,
-          paymentMethod: "QRIS_DYNAMIC",
+          paymentMethod,
           items: lines.map((line) => ({
             menuItemId: line.menuItemId,
             quantity: line.quantity,
@@ -138,9 +158,10 @@ export function CartSheet({
 
       clear();
       onOpenChange(false);
-      router.push(
-        `/t/${encodeURIComponent(tableSlug)}/pay/${encodeURIComponent(createdOrderNumber)}`,
-      );
+      const methodSegment = PAYMENT_ROUTE[paymentMethod];
+      const basePath = `/t/${encodeURIComponent(tableSlug)}/pay/${encodeURIComponent(createdOrderNumber)}`;
+
+      router.push(methodSegment.length > 0 ? `${basePath}/${methodSegment}` : basePath);
     } catch {
       setSubmitError("Tidak dapat menghubungi server. Periksa koneksi Anda.");
     } finally {
@@ -284,6 +305,45 @@ export function CartSheet({
                 Dipakai untuk mengirim e-struk dan notifikasi pesanan siap.
               </span>
             </label>
+          </section>
+
+          <section className="flex flex-col gap-2">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+              Metode pembayaran
+            </h3>
+            <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Metode pembayaran">
+              {PAYMENT_OPTIONS.map((option) => {
+                const isActive = paymentMethod === option.value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    onClick={() => setPaymentMethod(option.value)}
+                    className={cn(
+                      "flex min-h-12 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition",
+                      isActive ? "border-primary bg-primary/5" : "border-border bg-card",
+                    )}
+                  >
+                    <span className="flex flex-col">
+                      <span className="text-sm font-bold">{option.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{option.hint}</span>
+                    </span>
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                        isActive ? "border-primary bg-primary" : "border-border",
+                      )}
+                    >
+                      {isActive ? <span className="size-1.5 rounded-full bg-primary-foreground" /> : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </section>
 
           <section className="flex flex-col gap-1.5 rounded-xl bg-secondary/70 p-3">

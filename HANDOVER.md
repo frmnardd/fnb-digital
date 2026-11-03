@@ -6,63 +6,72 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 4 — Sistem Pembayaran` (2/6 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `4.2 Integrasi Pembayaran QRIS Dinamis & Tombol Unduh QR` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `4.3 Integrasi Pembayaran Transfer Bank (Virtual Account & Transfer Manual Kode Unik)`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**166 test**, 53 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
-* **Route aktif**: `/api/menu`, `/api/orders`, `/api/orders/[orderNumber]/payment/qris`, `/api/orders/[orderNumber]/payment/status`, `/api/tables/[qrSlug]/session`, `/api/tables/[qrSlug]/call-waiter`, `/t/[tableSlug]`, `/t/[tableSlug]/pay/[orderNumber]` (semua ƒ).
-* **Verifikasi kontrak HTTP** (tanpa DB): `POST qris` orderNumber invalid → 400, `GET status` invalid → 400, keduanya valid → 500 berformat benar; halaman bayar → **HTTP 200** (fallback "Sistem belum siap").
+* **Fase Aktif**: `Fase 4 — Sistem Pembayaran` (3/6 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `4.3 Integrasi Transfer Bank (VA & Transfer Manual)` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `4.4 Alur Pembayaran Tunai di Kasir (Pay at Cashier)`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**186 test**, 60 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
+* **Route baru**: `/api/orders/[orderNumber]/payment/va`, `.../manual`, `.../proof`; halaman `/pay/[orderNumber]` (hub), `/pay/[orderNumber]/qris`, `.../va`, `.../manual` (semua ƒ).
+* **Verifikasi kontrak HTTP** (tanpa DB): VA orderNumber invalid → 400, bank invalid (`CIMB`) → 422 (daftar bank disebut di pesan), VA/manual valid → 500 rapi, proof non-multipart → 400; keempat halaman pembayaran → **HTTP 200**.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 17 dari 31 sub-tugas selesai.
+* **Progress**: 18 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/payment/types.ts` | **Baru** — `QrisInstruction`, `PaymentConfigError`, `PaymentGatewayError` |
-| `src/lib/payment/qris.ts` | **Baru** — EMVCo TLV (`encodeTlv`/`parseTlv`), `crc16Ccitt` (CCITT-FALSE, vector `29B1`), `buildStaticQris`, `buildDynamicQris` (tag 54 nominal, tag 01 = 12, ref label 62/05, CRC 63), `validateQrisPayload`, `createDemoStaticPayload` |
-| `src/lib/payment/qris.test.ts` | **Baru** — 16 test (CRC vector, TLV round-trip, payload valid, nominal & reference, regenerate, tombol error, tidak memutasi input) |
-| `src/lib/payment/midtrans.ts` | **Baru** — `createQrisCharge()` via `fetch` (sandbox/production, Basic auth, timeout 15 dtk, ekstraksi `qr_string`/`actions[generate-qr-code]`) |
-| `src/app/api/orders/[orderNumber]/payment/qris/route.ts` | **Baru** — idempoten (pakai `Payment` PENDING yang belum kedaluwarsa), mode `gateway` atau `demo` (fallback `PaymentConfigError`), simpan `gatewayPayload { qrString, qrUrl, mode }`, TTL 15 menit |
-| `src/app/api/orders/[orderNumber]/payment/status/route.ts` | **Baru** — status order + payment terakhir untuk polling |
-| `src/components/customer/PaymentQrisPanel.tsx` | **Baru** — ambil QR dari API, hitung mundur, polling 5 dtk, tombol Simpan (fetch→blob→download) & Salin, fallback `<textarea>` payload, badge "QR kedaluwarsa" + Buat ulang, catatan mode demo |
-| `src/app/(customer)/t/[tableSlug]/pay/[orderNumber]/page.tsx` | **Baru** — server component ringkasan order + `PaymentQrisPanel`, fallback 200 saat DB belum siap |
-| `src/components/customer/CartSheet.tsx` | **Diperbarui** — `tableSlug` prop, `handleCheckout()` (POST `/api/orders` dengan `modifierOptionIds` hasil split `groupId:optionId`, nama/WA opsional), lalu `clear()` + `router.push` ke halaman bayar |
-| `src/components/customer/FloatingCartBar.tsx` | Diperbarui — meneruskan `tableSlug` ke `CartSheet` |
-| `src/lib/env.ts`, `.env.example` | Ditambah `MIDTRANS_SERVER_KEY`, `MIDTRANS_IS_PRODUCTION`, `QRIS_STATIC_PAYLOAD` (opsional) |
-| `TODO.md` | `4.2` ditandai `[x]` |
+| `src/lib/payment/va.ts` | **Baru** — `BANK_CODES`/`BANK_OPTIONS` (BCA/Mandiri/BNI/BRI), `isValidBank`, `getBankLabel`, `buildVirtualAccount` (12 digit deterministik, prefix per bank) |
+| `src/lib/payment/va.test.ts` | **Baru** — 9 test (daftar bank, validasi kode, prefix, determinisme, beda bank/pesanan, nomor tanpa digit) |
+| `src/lib/payment/manual-transfer.ts` | **Baru** — `MANUAL_TRANSFER_ACCOUNTS`, `buildTransferInstruction`, `validateProofDescriptor` (MIME JPG/PNG/WEBP/PDF & maks 2 MB), `buildProofFileName` (ekstensi dari MIME, anti path traversal), `buildProofPublicUrl` |
+| `src/lib/payment/manual-transfer.test.ts` | **Baru** — 11 test |
+| `src/app/api/orders/[orderNumber]/payment/va/route.ts` | **Baru** — POST `{ bank }`, idempoten per bank, simpan `gatewayPayload { bank, vaNumber }`, TTL 15 menit |
+| `src/app/api/orders/[orderNumber]/payment/manual/route.ts` | **Baru** — POST instruksi transfer (rekening + nominal termasuk kode unik), TTL 24 jam |
+| `src/app/api/orders/[orderNumber]/payment/proof/route.ts` | **Baru** — POST multipart `proof`, validasi metadata, simpan ke `public/uploads/proofs`, update `Payment.proofImageUrl` |
+| `src/components/customer/VirtualAccountPanel.tsx` | **Baru** — pemilih bank, nomor VA besar, salin, hitung mundur, polling status |
+| `src/components/customer/ManualTransferPanel.tsx` | **Baru** — nominal + kode unik, rekening + salin, upload bukti (validasi & preview), polling status |
+| `src/components/customer/CartSheet.tsx` | **Diperbarui** — pemilih metode (QRIS / Transfer VA / Transfer Manual / Bayar di Kasir) sebelum order dibuat + redirect per metode |
+| `src/app/(customer)/t/[tableSlug]/pay/[orderNumber]/page.tsx` | **Ditulis ulang** — kini **hub** pemilihan metode (atau kartu "Bayar di Kasir" berisi kode booking bila metode cash) |
+| `.../pay/[orderNumber]/qris/page.tsx` | **Baru** — halaman QRIS (dipindah dari hub) |
+| `.../pay/[orderNumber]/va/page.tsx`, `.../manual/page.tsx` | **Baru** — halaman VA & transfer manual |
+| `TODO.md` | `4.3` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`4.3 Integrasi Pembayaran Transfer Bank (Virtual Account & Transfer Manual Kode Unik)`**, ubah menjadi `[/]`.
-2. **Pemilihan metode pembayaran harus terjadi SEBELUM order dibuat** (karena `Payment.method` disimpan saat create):
-   * Tambahkan selector metode di `CartSheet` (radio list ≥ 48px): `QRIS_DYNAMIC`, `VIRTUAL_ACCOUNT`, `MANUAL_TRANSFER`, `CASH` (Bayar di Kasir). Simpan pilihan sebagai state lokal sheet (default QRIS) lalu kirim ke `POST /api/orders`.
-   * Setelah sukses, arahkan sesuai metode: QRIS → `/t/[slug]/pay/[orderNumber]/qris`, VA → `.../va`, MANUAL_TRANSFER → `.../manual`, CASH → (4.4) `.../cashier`.
-   * **Pindahkan** halaman QRIS: buat `pay/[orderNumber]/qris/page.tsx` berisi `PaymentQrisPanel` (pindahkan dari `pay/[orderNumber]/page.tsx`), dan jadikan `pay/[orderNumber]/page.tsx` sebagai **hub pemilihan metode** (menampilkan ringkasan order + 3–4 tombol metode; jangan membuat order baru di hub).
-3. **Virtual Account** (`src/lib/payment/va.ts` + test):
-   * `BANK_OPTIONS` (BCA, Mandiri, BNI, BRI) dengan kode & label.
-   * `buildVirtualAccount({ bank, orderNumber, amount })` → nomor VA demo deterministik (mis. `8808` + 10 digit dari hash orderNumber) + `expiresAt`; validator `isValidBank(bank)`.
-   * Route `POST /api/orders/[orderNumber]/payment/va` (body Zod `{ bank }`): validasi order `PENDING_PAYMENT`, idempoten terhadap `Payment` VA PENDING yang valid, simpan `gatewayPayload { bank, vaNumber }`, respons `{ bank, vaNumber, amount, expiresAt, mode }`.
-   * Halaman `pay/[orderNumber]/va/page.tsx` + client: daftar bank, tampilkan nomor VA besar (`tabular-nums`), tombol **Salin VA** (clipboard + fallback), hitung mundur, polling status.
-4. **Transfer Manual** (`src/lib/payment/manual-transfer.ts` + test):
-   * `MANUAL_TRANSFER` memakai `order.grandTotal` yang SUDAH memuat `uniqueCode` 3 digit (dihitung di 4.1) — jangan menghitung ulang.
-   * `formatTransferInstruction({ bankAccounts, amount, uniqueCode, orderNumber })` + `validateProofDescriptor({ fileName, size, mimeType })` (maks 2 MB, `image/jpeg|png|webp|application/pdf`).
-   * Route `POST /api/orders/[orderNumber]/payment/manual` (info rekening + nominal + instruksi) dan `POST /api/orders/[orderNumber]/payment/proof` (**multipart** `request.formData()`): validasi file, simpan ke `public/uploads/proofs/<orderNumber>-<timestamp>.<ext>` (buat folder bila belum ada; `/public/uploads` sudah di-`.gitignore`), update `Payment.proofImageUrl` + tetap `PENDING` (validasi manual oleh kasir di 5.2), respons `{ proofImageUrl }`.
-   * Halaman `pay/[orderNumber]/manual/page.tsx` + client: nominal + kode unik, daftar rekening (copy), form upload bukti (preview, progress), status "menunggu verifikasi kasir", polling status.
-5. **Verifikasi**: `npm test` (va/manual helper), `typecheck`, `lint`, `build`, probe HTTP (body `bank` invalid → 422, orderNumber invalid → 400, tanpa DB → 500 rapi; upload tanpa file → 422).
-6. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `4.4 Alur Pembayaran Tunai di Kasir`), `git commit` (`feat(payment): add virtual account and manual transfer flows`), push.
+1. Ambil **`4.4 Alur Pembayaran Tunai di Kasir (Pay at Cashier)`**, ubah menjadi `[/]`.
+2. **Buat `src/lib/barcode/code39.ts`** (pure, tanpa dependency) + `src/lib/barcode/code39.test.ts`:
+   * Tabel pola Code 39 (`0-9`, `A-Z`, `-`, `.`, ` `, `$`, `/`, `+`, `%`, start/stop `*`) dengan 9 elemen (bar/space) per karakter.
+   * `encodeCode39(text)` → string biner `1/0` (bar/space) siap digambar; `isEncodableCode39(text)`; normalisasi huruf besar.
+   * Uji: pola start/stop `*`, panjang keluaran, karakter tak didukung ditolak, huruf kecil dinormalisasi.
+3. **Buat `src/components/customer/BookingCodeCard.tsx`** (`"use client"` bila perlu):
+   * Kode booking = `orderNumber` ditampilkan besar (`tabular-nums`, `tracking-widest`), tombol **Salin Kode**.
+   * **Barcode SVG** dari `encodeCode39(orderNumber)` — render `<rect>` per bar dengan proporsi bar lebar/sempit (mis. 3:1), tinggi 72px, `role="img"` + `aria-label`.
+4. **Buat `src/lib/security/pin-attempts.ts`** (in-memory dengan TTL, cukup untuk single-instance) + test:
+   * `registerPinAttempt(key)`, `isPinLocked(key)`, `resetPinAttempts(key)` — maks **5 percobaan / 10 menit** per kunci (`orderNumber` + IP/`x-forwarded-for`). Catat batasan multi-instance di komentar.
+5. **Buat `POST /api/orders/[orderNumber]/pin`** (`force-dynamic`):
+   * Body Zod strict `{ pin: string regex ^\d{4}$ }`.
+   * Cari order (`select` id, status, tableSessionId) → harus `WAITING_CASHIER_APPROVAL` (409 bila bukan).
+   * Ambil `Table.currentPin` lewat `TableSession.tableId`; bila `pinEnabled` false atau `currentPin` null → 409 "PIN meja tidak diaktifkan".
+   * Verifikasi dengan `verifyPin()` dari `src/lib/security/pin.ts`; bila gagal → 401 + `details.remainingAttempts`; bila percobaan habis → 429 + `Retry-After`.
+   * Sukses → transaksi: `order.status = CONFIRMED`, `confirmedAt = now`, `tableSession.lastActivityAt = now` (payment tunai tetap `PENDING` sampai kasir menerima uang di 5.2). Jangan set `PAID`.
+   * Respons `{ data: { orderNumber, status, next: "WAITING_CASHIER_PAYMENT" } }`.
+6. **Buat halaman `.../pay/[orderNumber]/cashier/page.tsx` + `CashierPaymentPanel`** (client):
+   * Tampilkan `BookingCodeCard`, nominal, instruksi "Tunjukkan kode ini ke kasir".
+   * Bila `pinEnabled`: form 4 kotak PIN (auto-focus, `inputMode="numeric"`), tombol "Konfirmasi PIN", pesan error & sisa percobaan, sukses → status berubah CONFIRMED (tampilkan "Menunggu kasir menerima pembayaran").
+   * Polling `payment/status` setiap 5 dtk; bila `PAID` tampilkan sukses. Sediakan tombol "Panggil Pelayan" (reuse `CallWaiterSheet` tidak wajib).
+7. **Verifikasi**: `npm test` (code39, pin-attempts), `typecheck`, `lint`, `build`, probe HTTP: body PIN bukan 4 digit → 422, order tidak ada → 404, tanpa DB → 500 rapi; halaman cashier → 200.
+8. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `4.5 Webhook Payment Gateway`), `git commit` (`feat(payment): add cash-at-cashier flow with table pin and barcode`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **QRIS mode demo**: tanpa `MIDTRANS_SERVER_KEY`, payload dibuat lokal (`buildDynamicQris`) dari `QRIS_STATIC_PAYLOAD` / `createDemoStaticPayload()`. Pembayaran nyata belum teruji — jangan klaim lunas otomatis (itu tugas webhook 4.5).
-* **Gambar QR**: encoder QR lokal BELUM diizinkan (butuh izin package `qrcode`). Sementara memakai `api.qrserver.com` + fallback teks. Ada `TODO(4.2)` di `PaymentQrisPanel`.
-* **Download QR**: `fetch → blob → <a download>`; bila CORS gagal tampilkan instruksi tekan-lama.
-* **`Payment.gatewayRefId` unik** — mode demo memakai `demo-<orderNumber>-<timestamp>`.
-* **Harga**: server selalu menghitung ulang (`buildOrderDraft`) dan Zod strict menolak field `price` dari klien.
+* **Metode pembayaran dipilih SEBELUM order dibuat** (di `CartSheet`), lalu redirect: QRIS → `/qris`, VA → `/va`, Manual → `/manual`, Cash → hub `/pay/[orderNumber]` (kartu kode booking).
+* **Hub tidak membuat order baru** — hanya menampilkan metode & tautan.
+* **Bukti transfer** disimpan di `public/uploads/proofs` (folder gitignored). Di platform read-only (Vercel) ganti ke object storage; kontrak respons sama.
+* **Nomor VA & QRIS saat ini mode demo** (lokal). Gateway asli butuh `MIDTRANS_SERVER_KEY` / rekening merchant asli.
+* **Rahasia**: `MIDTRANS_SERVER_KEY`, `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash` — jangan ke klien/log.
+* **`Payment.gatewayRefId` unik**; demo memakai prefix `demo-`/`va-`/`manual-` + timestamp.
+* **Harga**: server selalu menghitung ulang (`buildOrderDraft`); Zod strict menolak field harga dari klien.
 * **Urutan kalkulasi (WAJIB)**: subtotal → diskon → service 5% → PB1 10% → `uniqueCode` (khusus `MANUAL_TRANSFER`).
 * **BUG SSR ZUSTAND (jangan diulang)**: `persist` tidak memasang `store.persist` saat storage tidak tersedia → guard `const persistApi = useCartStore.persist; if (!persistApi) {...}`.
 * **Sinkronisasi keranjang**: lintas tab/origin sama (`BroadcastChannel`); multi-device butuh Supabase Realtime.
-* **Rahasia**: `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`, `MIDTRANS_SERVER_KEY` — jangan ke klien/log.
 * **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; urutan validasi env → slug/param → body → DB.
-* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
+* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234` (hash HMAC); staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
 * **Tema**: `:root` Customer Warm Light (`#FAF8F5`, primary `#D9381E`), `.dark` POS/KDS Slate Dark; target sentuh pelanggan ≥ 48px, POS/KDS 56px; angka wajib `tabular-nums`.
@@ -86,4 +95,5 @@
 * **[Sesi #1 — 2026-11-03 · 3.5 Cart Store & Sync]**: `cart.ts` (+13), `useCartStore` (+11), `cart-sync`, fix bug SSR `persist`. Commit `6787d5b`.
 * **[Sesi #1 — 2026-11-03 · 3.6 Cart Sheet & Upselling]**: `upsell.ts` (+9), `cart-totals.ts` (+6), `FloatingCartBar` + `CartSheet`. Fase 3 tuntas. Commit `6f551dc`.
 * **[Sesi #1 — 2026-11-03 · 4.1 API Orders]**: `order-draft.ts` (+18 test) + `POST /api/orders`. Commit `4a60c78`.
-* **[Sesi #1 — 2026-11-03 · 4.2 QRIS]**: `payment/qris.ts` (+16 test, EMVCo CRC), adapter Midtrans, API qris & status, `PaymentQrisPanel` + halaman bayar, CTA keranjang → order → halaman bayar. 166 test lulus; probe HTTP & halaman bayar 200. Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 4.2 QRIS]**: `payment/qris.ts` (+16 test), adapter Midtrans, API qris & status, `PaymentQrisPanel`, halaman bayar, CTA keranjang. Commit `a213e7e`.
+* **[Sesi #1 — 2026-11-03 · 4.3 Transfer Bank]**: `va.ts` (+9 test), `manual-transfer.ts` (+11 test), API VA/manual/proof (upload 2 MB), panel VA & manual, hub pemilihan metode + pemilih metode di keranjang. 186 test lulus; probe HTTP & 4 halaman pembayaran 200. Commit menyusul.
