@@ -5,6 +5,10 @@ import { useMemo, useState } from "react";
 
 import { CategoryTabs } from "@/components/customer/CategoryTabs";
 import { MenuCard } from "@/components/customer/MenuCard";
+import {
+  ModifierSheet,
+  type ModifierConfirmPayload,
+} from "@/components/customer/ModifierSheet";
 import { Button } from "@/components/ui/button";
 import { CUSTOMER_HEADER_OFFSET_PX } from "@/lib/constants";
 import {
@@ -31,12 +35,28 @@ export function MenuBrowser({ categories }: { categories: PublicCategory[] }) {
    * jangan menambah logika bisnis keranjang di sini.
    */
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
+  const [customizingItem, setCustomizingItem] = useState<PublicMenuItem | null>(null);
 
-  function handleAddToCart(item: PublicMenuItem) {
+  function addToCart(itemId: string, quantity: number) {
     setCartQuantities((previous) => ({
       ...previous,
-      [item.id]: (previous[item.id] ?? 0) + 1,
+      [itemId]: (previous[itemId] ?? 0) + quantity,
     }));
+  }
+
+  function handleAddToCart(item: PublicMenuItem) {
+    // Menu dengan grup modifier membuka bottom sheet kustomisasi (3.4).
+    if (item.modifierGroups.length > 0) {
+      setCustomizingItem(item);
+      return;
+    }
+
+    addToCart(item.id, 1);
+  }
+
+  function handleConfirmCustomization(payload: ModifierConfirmPayload) {
+    addToCart(payload.item.id, payload.quantity);
+    setCustomizingItem(null);
   }
 
   const filterOptions = useMemo(
@@ -199,6 +219,16 @@ export function MenuBrowser({ categories }: { categories: PublicCategory[] }) {
           ))}
         </div>
       )}
+
+      <ModifierSheet
+        item={customizingItem}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCustomizingItem(null);
+          }
+        }}
+        onConfirm={handleConfirmCustomization}
+      />
     </div>
   );
 }
