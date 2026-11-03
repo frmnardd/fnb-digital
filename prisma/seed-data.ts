@@ -358,6 +358,106 @@ export const SEED_STAFF: SeedStaff[] = [
 ];
 
 // -----------------------------------------------------------------------------
+// BAHAN BAKU & RESEP (BOM) — untuk HPP dan menu engineering
+// -----------------------------------------------------------------------------
+
+export type IngredientUnitKey = "GRAM" | "ML" | "PIECE" | "PACK" | "SLICE";
+
+export interface SeedIngredient {
+  name: string;
+  /** SKU dipakai sebagai kunci natural (unik) saat upsert. */
+  sku: string;
+  unit: IngredientUnitKey;
+  currentStock: number;
+  minThreshold: number;
+  costPerUnit: number;
+}
+
+export interface SeedRecipeLine {
+  ingredientSku: string;
+  /** Takaran per 1 porsi, dalam satuan bahan. */
+  quantity: number;
+}
+
+export interface SeedRecipe {
+  menuSlug: string;
+  lines: SeedRecipeLine[];
+}
+
+export const SEED_INGREDIENTS: SeedIngredient[] = [
+  { name: "Beras", sku: "BHN-BERAS", unit: "GRAM", currentStock: 25000, minThreshold: 5000, costPerUnit: 14 },
+  { name: "Ayam Fillet", sku: "BHN-AYAM", unit: "GRAM", currentStock: 12000, minThreshold: 3000, costPerUnit: 42 },
+  { name: "Telur Ayam", sku: "BHN-TELUR", unit: "PIECE", currentStock: 180, minThreshold: 40, costPerUnit: 2400 },
+  { name: "Minyak Goreng", sku: "BHN-MINYAK", unit: "GRAM", currentStock: 8000, minThreshold: 2000, costPerUnit: 17 },
+  { name: "Bawang Merah", sku: "BHN-BAWANG", unit: "GRAM", currentStock: 3000, minThreshold: 800, costPerUnit: 35 },
+  { name: "Cabai Rawit", sku: "BHN-CABAI", unit: "GRAM", currentStock: 1500, minThreshold: 400, costPerUnit: 55 },
+  { name: "Mie Telur", sku: "BHN-MIE", unit: "GRAM", currentStock: 6000, minThreshold: 1500, costPerUnit: 22 },
+  { name: "Bakso Sapi", sku: "BHN-BAKSO", unit: "PIECE", currentStock: 150, minThreshold: 40, costPerUnit: 1200 },
+  { name: "Kentang", sku: "BHN-KENTANG", unit: "GRAM", currentStock: 9000, minThreshold: 2500, costPerUnit: 19 },
+  { name: "Biji Kopi", sku: "BHN-KOPI", unit: "GRAM", currentStock: 2500, minThreshold: 600, costPerUnit: 180 },
+  { name: "Susu UHT", sku: "BHN-SUSU", unit: "ML", currentStock: 8000, minThreshold: 2000, costPerUnit: 18 },
+  { name: "Gula Aren", sku: "BHN-GULA-AREN", unit: "GRAM", currentStock: 2000, minThreshold: 500, costPerUnit: 45 },
+];
+
+export const SEED_RECIPES: SeedRecipe[] = [
+  {
+    menuSlug: "nasi-goreng-kampung",
+    lines: [
+      { ingredientSku: "BHN-BERAS", quantity: 120 },
+      { ingredientSku: "BHN-TELUR", quantity: 1 },
+      { ingredientSku: "BHN-AYAM", quantity: 60 },
+      { ingredientSku: "BHN-MINYAK", quantity: 15 },
+      { ingredientSku: "BHN-BAWANG", quantity: 20 },
+      { ingredientSku: "BHN-CABAI", quantity: 10 },
+    ],
+  },
+  {
+    menuSlug: "mie-ayam-bakso",
+    lines: [
+      { ingredientSku: "BHN-MIE", quantity: 100 },
+      { ingredientSku: "BHN-AYAM", quantity: 70 },
+      { ingredientSku: "BHN-BAKSO", quantity: 3 },
+      { ingredientSku: "BHN-MINYAK", quantity: 10 },
+      { ingredientSku: "BHN-BAWANG", quantity: 15 },
+    ],
+  },
+  {
+    menuSlug: "ayam-geprek-sambal-ijo",
+    lines: [
+      { ingredientSku: "BHN-AYAM", quantity: 150 },
+      { ingredientSku: "BHN-BERAS", quantity: 120 },
+      { ingredientSku: "BHN-CABAI", quantity: 25 },
+      { ingredientSku: "BHN-BAWANG", quantity: 20 },
+      { ingredientSku: "BHN-MINYAK", quantity: 25 },
+    ],
+  },
+  {
+    menuSlug: "sate-ayam-madura",
+    lines: [
+      { ingredientSku: "BHN-AYAM", quantity: 120 },
+      { ingredientSku: "BHN-BERAS", quantity: 100 },
+      { ingredientSku: "BHN-BAWANG", quantity: 15 },
+      { ingredientSku: "BHN-GULA-AREN", quantity: 12 },
+    ],
+  },
+  {
+    menuSlug: "kentang-goreng",
+    lines: [
+      { ingredientSku: "BHN-KENTANG", quantity: 180 },
+      { ingredientSku: "BHN-MINYAK", quantity: 30 },
+    ],
+  },
+  {
+    menuSlug: "kopi-susu-gula-aren",
+    lines: [
+      { ingredientSku: "BHN-KOPI", quantity: 18 },
+      { ingredientSku: "BHN-SUSU", quantity: 150 },
+      { ingredientSku: "BHN-GULA-AREN", quantity: 20 },
+    ],
+  },
+];
+
+// -----------------------------------------------------------------------------
 // VALIDASI DATA (murni, tanpa database)
 // -----------------------------------------------------------------------------
 
@@ -372,6 +472,9 @@ export interface SeedValidationResult {
     modifierGroups: number;
     modifierOptions: number;
     staff: number;
+    ingredients: number;
+    recipes: number;
+    recipeLines: number;
   };
 }
 
@@ -427,6 +530,7 @@ export function validateSeedData(): SeedValidationResult {
   const areaSlugs = new Set(SEED_AREAS.map((a) => a.slug));
   const categorySlugs = new Set(SEED_CATEGORIES.map((c) => c.slug));
   const groupNames = new Set(SEED_MODIFIER_GROUPS.map((g) => g.name));
+  const menuSlugs = new Set(SEED_MENUS.map((m) => m.slug));
 
   for (const table of SEED_TABLES) {
     if (!areaSlugs.has(table.areaSlug)) {
@@ -500,6 +604,57 @@ export function validateSeedData(): SeedValidationResult {
     }
   }
 
+  // --- Bahan baku & resep ---
+  const ingredientSkus = new Set(SEED_INGREDIENTS.map((ingredient) => ingredient.sku));
+  const duplicateSkus = findDuplicates(SEED_INGREDIENTS.map((ingredient) => ingredient.sku));
+
+  if (duplicateSkus.length > 0) {
+    errors.push(`SKU bahan duplikat: ${duplicateSkus.join(", ")}.`);
+  }
+
+  for (const ingredient of SEED_INGREDIENTS) {
+    if (ingredient.currentStock < 0 || ingredient.minThreshold < 0) {
+      errors.push(`Bahan ${ingredient.sku} memiliki stok/ambang negatif.`);
+    }
+    if (ingredient.costPerUnit < 0) {
+      errors.push(`Bahan ${ingredient.sku} memiliki biaya satuan negatif.`);
+    }
+  }
+
+  const duplicateRecipes = findDuplicates(SEED_RECIPES.map((recipe) => recipe.menuSlug));
+
+  if (duplicateRecipes.length > 0) {
+    errors.push(`Resep ganda untuk menu: ${duplicateRecipes.join(", ")}.`);
+  }
+
+  for (const recipe of SEED_RECIPES) {
+    if (!menuSlugs.has(recipe.menuSlug)) {
+      errors.push(`Resep merujuk menu tidak dikenal: ${recipe.menuSlug}.`);
+    }
+    if (recipe.lines.length === 0) {
+      errors.push(`Resep ${recipe.menuSlug} tidak memiliki bahan.`);
+    }
+
+    const duplicateIngredients = findDuplicates(
+      recipe.lines.map((line) => line.ingredientSku),
+    );
+
+    if (duplicateIngredients.length > 0) {
+      errors.push(
+        `Resep ${recipe.menuSlug} memuat bahan ganda: ${duplicateIngredients.join(", ")}.`,
+      );
+    }
+
+    for (const line of recipe.lines) {
+      if (!ingredientSkus.has(line.ingredientSku)) {
+        errors.push(`Resep ${recipe.menuSlug} merujuk bahan tidak dikenal: ${line.ingredientSku}.`);
+      }
+      if (line.quantity <= 0) {
+        errors.push(`Resep ${recipe.menuSlug} memiliki takaran tidak valid untuk ${line.ingredientSku}.`);
+      }
+    }
+  }
+
   return {
     ok: errors.length === 0,
     errors,
@@ -511,6 +666,9 @@ export function validateSeedData(): SeedValidationResult {
       modifierGroups: SEED_MODIFIER_GROUPS.length,
       modifierOptions: SEED_MODIFIER_GROUPS.reduce((total, group) => total + group.options.length, 0),
       staff: SEED_STAFF.length,
+      ingredients: SEED_INGREDIENTS.length,
+      recipes: SEED_RECIPES.length,
+      recipeLines: SEED_RECIPES.reduce((total, recipe) => total + recipe.lines.length, 0),
     },
   };
 }

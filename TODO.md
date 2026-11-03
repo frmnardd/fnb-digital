@@ -59,5 +59,5 @@
 ## Fase 8: Kesiapan Produksi (Deploy & Keamanan)
 - [x] **8.1 Artefak Deploy VPS + Supabase**: Tambahkan `ecosystem.config.cjs` (PM2), `deploy/nginx.conf`, `scripts/deploy.sh`, `scripts/backup-db.sh`, script `db:deploy`, `.gitattributes` (LF untuk skrip), perbaiki `README.md` & `.env.example`.
 - [x] **8.2 Autentikasi Staf & RBAC**: Login staf (email + PIN), cookie sesi httpOnly 12 jam, middleware proteksi `(pos)`, `(kds)`, `(staff)`, `(admin)` + API, role ADMIN untuk back-office, `staffEmail` dihapus dari body/query.
-- [ ] **8.3 Seed Bahan Baku & Resep Contoh**: Isi `Ingredient` + `MenuRecipe` agar HPP dan menu engineering punya data nyata saat demo.
+- [x] **8.3 Seed Bahan Baku & Resep Contoh**: 12 `Ingredient` + 6 resep (25 baris) masuk `prisma/seed-data.ts`/`seed.ts`; HPP 12 menu dihitung ulang dari BOM (idempoten).
 - [ ] **8.4 Higiene Produksi**: Bersihkan data uji (order/shift), rotasi kredensial yang pernah terekspos, ganti PIN staf seed, dokumentasikan hasil uji E2E.

@@ -13,12 +13,15 @@
 import { loadEnvFile } from "node:process";
 
 import { hashPin } from "../src/lib/security/pin";
+import { computeRecipeCost } from "../src/lib/inventory";
 
 import {
   SEED_AREAS,
   SEED_CATEGORIES,
+  SEED_INGREDIENTS,
   SEED_MENUS,
   SEED_MODIFIER_GROUPS,
+  SEED_RECIPES,
   SEED_STAFF,
   SEED_TABLES,
   validateSeedData,
@@ -45,6 +48,8 @@ function printReport(result: SeedValidationResult, dryRun: boolean): void {
   console.log(`│  Modifier group  : ${String(counts.modifierGroups).padEnd(26)}│`);
   console.log(`│  Modifier option : ${String(counts.modifierOptions).padEnd(26)}│`);
   console.log(`│  Staf            : ${String(counts.staff).padEnd(26)}│`);
+  console.log(`│  Bahan baku      : ${String(counts.ingredients).padEnd(26)}│`);
+  console.log(`│  Resep menu      : ${String(counts.recipes).padEnd(26)}│`);
   console.log("└──────────────────────────────────────────────┘");
 
   if (result.ok) {
@@ -225,9 +230,92 @@ async function seedDatabase(): Promise<void> {
     }
 
     // ---------------------------------------------------------------------
-    // 7) Ringkasan hasil dari database
+    // 7) Bahan baku + resep (BOM) → hitung ulang HPP menu
     // ---------------------------------------------------------------------
-    const [areas, tables, categories, menus, groups, options, staff] = await Promise.all([
+    const ingredientIdBySku = new Map<string, string>();
+
+    for (const ingredient of SEED_INGREDIENTS) {
+      const row = await prisma.ingredient.upsert({
+        where: { sku: ingredient.sku },
+        update: {
+          name: ingredient.name,
+          unit: ingredient.unit,
+          currentStock: ingredient.currentStock,
+          minThreshold: ingredient.minThreshold,
+          costPerUnit: ingredient.costPerUnit,
+          isActive: true,
+        },
+        create: {
+          sku: ingredient.sku,
+          name: ingredient.name,
+          unit: ingredient.unit,
+          currentStock: ingredient.currentStock,
+          minThreshold: ingredient.minThreshold,
+          costPerUnit: ingredient.costPerUnit,
+        },
+        select: { id: true },
+      });
+
+      ingredientIdBySku.set(ingredient.sku, row.id);
+    }
+
+    const menuRows = await prisma.menuItem.findMany({ select: { id: true, slug: true } });
+    const menuIdBySlug = new Map(menuRows.map((menu) => [menu.slug, menu.id] as const));
+    const costBySku = new Map(
+      SEED_INGREDIENTS.map((ingredient) => [ingredient.sku, ingredient.costPerUnit] as const),
+    );
+
+    for (const recipe of SEED_RECIPES) {
+      const menuItemId = menuIdBySlug.get(recipe.menuSlug);
+
+      if (!menuItemId) {
+        continue;
+      }
+
+      const lines = recipe.lines
+        .map((line) => ({
+          ingredientId: ingredientIdBySku.get(line.ingredientSku) ?? "",
+          quantity: line.quantity,
+        }))
+        .filter((line) => line.ingredientId.length > 0);
+
+      // Ganti seluruh baris resep agar idempoten.
+      await prisma.menuRecipe.deleteMany({ where: { menuItemId } });
+
+      if (lines.length > 0) {
+        await prisma.menuRecipe.createMany({
+          data: lines.map((line) => ({
+            menuItemId,
+            ingredientId: line.ingredientId,
+            quantity: line.quantity,
+          })),
+        });
+      }
+
+      const costPrice = computeRecipeCost(
+        recipe.lines.map((line) => ({
+          quantity: line.quantity,
+          costPerUnit: costBySku.get(line.ingredientSku) ?? 0,
+        })),
+      );
+
+      await prisma.menuItem.update({ where: { id: menuItemId }, data: { costPrice } });
+    }
+
+    // ---------------------------------------------------------------------
+    // 8) Ringkasan hasil dari database
+    // ---------------------------------------------------------------------
+    const [
+      areas,
+      tables,
+      categories,
+      menus,
+      groups,
+      options,
+      staff,
+      ingredients,
+      recipes,
+    ] = await Promise.all([
       prisma.area.count(),
       prisma.table.count(),
       prisma.category.count(),
@@ -235,11 +323,14 @@ async function seedDatabase(): Promise<void> {
       prisma.modifierGroup.count(),
       prisma.modifierOption.count(),
       prisma.staff.count(),
+      prisma.ingredient.count(),
+      prisma.menuRecipe.count(),
     ]);
 
     console.log("\n📦 Seeding selesai. Jumlah baris di database:");
     console.log(`   area=${areas} meja=${tables} kategori=${categories} menu=${menus}`);
     console.log(`   modifierGroup=${groups} modifierOption=${options} staf=${staff}`);
+    console.log(`   bahan=${ingredients} barisResep=${recipes}`);
   } finally {
     await prisma.$disconnect();
   }

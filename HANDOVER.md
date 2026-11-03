@@ -7,13 +7,13 @@
 > - Fase 1–7 selesai (37 sub-tugas). **Fase 8 (kesiapan produksi)**: 8.1 & 8.2 selesai.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 8 — Kesiapan Produksi` (2/4 selesai)
-* **Sub-Tugas Terakhir**: `8.2 Autentikasi Staf & RBAC` ✅
-* **Sub-Tugas Berikutnya**: `8.3 Seed Bahan Baku & Resep Contoh` (lalu `8.4 Higiene Produksi`)
+* **Fase Aktif**: `Fase 8 — Kesiapan Produksi` (3/4 selesai)
+* **Sub-Tugas Terakhir**: `8.3 Seed Bahan Baku & Resep Contoh` ✅
+* **Sub-Tugas Berikutnya**: `8.4 Higiene Produksi` (tutup shift OPEN, bersihkan data uji, rotasi kredensial, ganti PIN)
 * **Build**: **HIJAU** — `npm test` (**422 test**, 141 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔ (middleware 35 kB).
-* **Database**: Supabase Singapore, sudah dimigrasi + seed. **Ada data uji**: `ORD-0001` (SERVED) dan **satu shift OPEN untuk kasir** (modal Rp150.000) hasil pengujian RBAC → bereskan di 8.4.
-* **Status deploy**: aplikasi sudah live di VPS (PM2 + Nginx + HTTPS `fnbtech.biz.id`) **dengan Nginx Basic Auth sementara**. Setelah redeploy RBAC, Basic Auth itu **harus dilepas** agar pelanggan bisa memesan.
-* **Progress**: 39 dari 41 sub-tugas.
+* **Database**: Supabase Singapore, termigrasi + seed. **12 bahan baku + 25 baris resep** sudah masuk; HPP 12 menu terhitung dari BOM (contoh: Nasi Goreng Kampung HPP Rp8.105 dari harga Rp38.000). **Sisa data uji**: `ORD-0001` (SERVED) + **shift OPEN kasir Rp150.000** → bereskan di 8.4.
+* **Status deploy**: live di VPS (PM2 + Nginx + HTTPS `fnbtech.biz.id`) dengan **Nginx Basic Auth sementara**. Setelah redeploy RBAC (commit `62215f7`), Basic Auth **harus dilepas** agar pelanggan bisa memesan.
+* **Progress**: 40 dari 41 sub-tugas.
 
 ## 2. Hasil Uji RBAC (matriks, sudah diverifikasi runtime)
 | Skenario | Hasil |
@@ -51,21 +51,19 @@
 | `src/components/pos/ShiftWorkspace.tsx` | Input email kasir dihapus; fetch `/api/pos/shift` tanpa query |
 | `src/components/pos/SupervisorPinModal.tsx` | Input email dihapus; hanya PIN 6 digit |
 | `src/components/pos/PosSidebar.tsx` | Tombol **Keluar** (GET logout → `/login`) |
+| `prisma/seed-data.ts` | **8.3** — `SEED_INGREDIENTS` (12 bahan), `SEED_RECIPES` (6 menu, 25 baris), validasi SKU unik/referensi bahan/menu/takaran + `counts.ingredients`/`recipes`/`recipeLines` |
+| `prisma/seed.ts` | **8.3** — upsert bahan per SKU, ganti baris resep per menu, hitung ulang `MenuItem.costPrice` via `computeRecipeCost`, ringkasan `bahan=`/`barisResep=` |
 | `README.md` | Bagian keamanan diperbarui (RBAC aktif, sisa batasan) |
-| `TODO.md` | `8.2` ditandai `[x]` |
+| `TODO.md` | `8.2` & `8.3` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
-## 4. Instruksi Spesifik untuk Agent Berikutnya (8.3 → 8.4)
-1. **8.3 Seed Bahan Baku & Resep**: tambahkan ke `prisma/seed-data.ts` + `prisma/seed.ts` (idempoten):
-   * ±8 `Ingredient` (contoh: Beras GRAM, Ayam GRAM, Telur PIECE, Minyak GRAM, Bawang GRAM, Cabai GRAM, Teh PACK, Gula GRAM) dengan `currentStock`, `minThreshold`, `costPerUnit` realistis.
-   * `MenuRecipe` untuk 4–6 menu (mis. Nasi Goreng 120 g beras + 100 g ayam + 1 telur + 15 g minyak), sehingga `MenuItem.costPrice` bisa dihitung.
-   * Setelah seed, jalankan `npm run db:seed` lalu cek `/api/admin/inventory` (bahan > 0) dan `/admin/dashboard` (margin/unit terisi).
-2. **8.4 Higiene Produksi**:
+## 4. Instruksi Spesifik untuk Agent Berikutnya (8.4)
+1. **8.4 Higiene Produksi**:
    * Tutup shift kasir yang masih OPEN (`POST /api/pos/shift/close` dengan `actualEndingCash` wajar) atau hapus lewat Prisma.
-   * Bersihkan data uji: hapus `Order`/`Payment`/`OrderItem`/`CashierShift`/`CashDrawerLog`/`TableSession` hasil uji (sisakan master: area, meja, kategori, menu, staf, modifier).
+   * Bersihkan data uji: hapus `Order`/`Payment`/`OrderItem`/`CashierShift`/`CashDrawerLog`/`TableSession` hasil uji (sisakan master: area, meja, kategori, menu, staf, modifier, ingredient, resep).
    * **Rotasi kredensial** yang pernah terekspos di chat: reset password Supabase (Ctrl+K → "reset database password"), perbarui `.env` lokal + VPS, buat `SESSION_SECRET` baru di VPS (`openssl rand -base64 48`), lalu `bash scripts/deploy.sh`.
    * Ganti PIN staf seed (`111111`/`222222`/`333333`/`444444`).
-3. **Langkah deploy setelah 8.2 (manual, di VPS)**:
+2. **Langkah deploy setelah 8.2 (manual, di VPS)**:
    * `bash scripts/deploy.sh`
    * Hapus 2 baris `auth_basic*` dari `/etc/nginx/sites-available/fnbtech` → `nginx -t && systemctl reload nginx` (kalau dibiarkan, pelanggan tidak bisa scan QR).
    * Uji: `https://fnbtech.biz.id/login` (staf) dan `https://fnbtech.biz.id/t/meja-01` (pelanggan tanpa login).
