@@ -1,7 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CategoryTabs } from "@/components/customer/CategoryTabs";
 import { MenuCard } from "@/components/customer/MenuCard";
@@ -10,6 +10,9 @@ import {
   type ModifierConfirmPayload,
 } from "@/components/customer/ModifierSheet";
 import { Button } from "@/components/ui/button";
+import { useCartHydrated } from "@/hooks/useCartHydrated";
+import { useCartSync } from "@/hooks/useCartSync";
+import { buildCartLineId, findQuantityByItem } from "@/lib/cart";
 import { CUSTOMER_HEADER_OFFSET_PX } from "@/lib/constants";
 import {
   countMatchingItems,
@@ -18,31 +21,41 @@ import {
   type DietaryFilter,
 } from "@/lib/menu-filter";
 import { cn } from "@/lib/utils";
+import { useCartStore } from "@/store/useCartStore";
 import type { PublicCategory, PublicMenuItem } from "@/types/menu";
 
 /**
  * Penjelajah menu pelanggan: pencarian instan, filter dietary, dan tab kategori
  * sticky. Seluruh pemfilteran dilakukan di client atas data yang sudah dimuat
  * server (tanpa request tambahan).
+ *
+ * Keranjang dikelola `useCartStore` (Zustand + persist) dan disinkronkan antar
+ * tab lewat `useCartSync` (BroadcastChannel).
  */
-export function MenuBrowser({ categories }: { categories: PublicCategory[] }) {
+export function MenuBrowser({
+  categories,
+  tableSlug,
+  sessionId,
+}: {
+  categories: PublicCategory[];
+  tableSlug: string;
+  sessionId: string | null;
+}) {
   const [search, setSearch] = useState("");
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
-
-  /**
-   * SEMENTARA (sub-tugas 3.3): hitungan keranjang lokal hanya untuk umpan balik
-   * visual pada `MenuCard`. Akan diganti Zustand cart store pada sub-tugas 3.5 —
-   * jangan menambah logika bisnis keranjang di sini.
-   */
-  const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
   const [customizingItem, setCustomizingItem] = useState<PublicMenuItem | null>(null);
 
-  function addToCart(itemId: string, quantity: number) {
-    setCartQuantities((previous) => ({
-      ...previous,
-      [itemId]: (previous[itemId] ?? 0) + quantity,
-    }));
-  }
+  const lines = useCartStore((state) => state.lines);
+  const addLine = useCartStore((state) => state.addLine);
+  const setContext = useCartStore((state) => state.setContext);
+  const hydrated = useCartHydrated();
+
+  useCartSync(tableSlug);
+
+  // Pastikan keranjang terikat ke meja yang sedang dibuka.
+  useEffect(() => {
+    setContext({ tableSlug, sessionId });
+  }, [tableSlug, sessionId, setContext]);
 
   function handleAddToCart(item: PublicMenuItem) {
     // Menu dengan grup modifier membuka bottom sheet kustomisasi (3.4).
@@ -51,11 +64,33 @@ export function MenuBrowser({ categories }: { categories: PublicCategory[] }) {
       return;
     }
 
-    addToCart(item.id, 1);
+    addLine({
+      id: buildCartLineId(item.id, [], ""),
+      menuItemId: item.id,
+      name: item.name,
+      imageUrl: item.imageUrl,
+      station: item.station,
+      basePrice: item.basePrice,
+      unitPrice: item.basePrice,
+      quantity: 1,
+      modifiers: [],
+      note: "",
+    });
   }
 
   function handleConfirmCustomization(payload: ModifierConfirmPayload) {
-    addToCart(payload.item.id, payload.quantity);
+    addLine({
+      id: buildCartLineId(payload.item.id, payload.modifiers, payload.note),
+      menuItemId: payload.item.id,
+      name: payload.item.name,
+      imageUrl: payload.item.imageUrl,
+      station: payload.item.station,
+      basePrice: payload.item.basePrice,
+      unitPrice: payload.unitPrice,
+      quantity: payload.quantity,
+      modifiers: payload.modifiers,
+      note: payload.note,
+    });
     setCustomizingItem(null);
   }
 
@@ -210,7 +245,7 @@ export function MenuBrowser({ categories }: { categories: PublicCategory[] }) {
                   <MenuCard
                     key={item.id}
                     item={item}
-                    quantityInCart={cartQuantities[item.id] ?? 0}
+                    quantityInCart={hydrated ? findQuantityByItem(lines, item.id) : 0}
                     onAdd={handleAddToCart}
                   />
                 ))}

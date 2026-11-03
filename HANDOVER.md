@@ -6,56 +6,61 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 3 — Antarmuka Halaman Pelanggan (Mobile-First)` (4/6 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `3.4 Bottom Sheet Kustomisasi Menu (ModifierSheet)` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `3.5 Store Keranjang & Sinkronisasi Group Order (useCartStore)`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**91 test**, 28 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔. Route: `/t/[tableSlug]` (ƒ, 167 kB) + 3 API (ƒ).
-* **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada). `ModifierSheet` belum bisa diuji visual (butuh portal + interaksi browser) — logikanya ditutup unit test.
-* **Progress**: 13 dari 31 sub-tugas selesai.
+* **Fase Aktif**: `Fase 3 — Antarmuka Halaman Pelanggan (Mobile-First)` (5/6 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `3.5 Store Keranjang & Sinkronisasi Group Order` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `3.6 Halaman Keranjang, Upselling, & Rincian Biaya`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**115 test**, 37 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔. Route: `/t/[tableSlug]` (ƒ, 169 kB) + 3 API (ƒ).
+* **Verifikasi runtime**: `GET /t/meja-01` → HTTP 200 (fallback "Sistem belum siap" karena DB belum ada). Render SSR `CustomerHeader` + `MenuBrowser` (dengan store Zustand) lolos setelah perbaikan bug hydration di bawah.
+* **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
+* **Progress**: 14 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/modifier-selection.ts` | **Baru** — `ModifierSelection`, `createInitialSelection` (default / opsi pertama untuk SINGLE wajib), `toggleOption` (SINGLE replace & clear, MULTIPLE toggle + batas `maxSelect`), `isOptionDisabled`, `validateSelection` (required/min/max + opsi asing), `selectionToModifiers`, `calculateSelectionTotal` (memakai `calculateLineTotal`) |
-| `src/lib/modifier-selection.test.ts` | **Baru** — 21 test (defaults, replace/clear, batas MULTIPLE, validasi, konversi modifier, total reaktif, kuantitas, delta negatif) |
-| `src/components/customer/ModifierSheet.tsx` | **Baru** — `BottomSheet` + grup SINGLE (`role="radiogroup"`/`radio`) & MULTIPLE (`checkbox`), label harga `+Rp …`/`Gratis`/`-Rp …`, stepper kuantitas 48×48 (maks 20), catatan 160 char, error per grup setelah submit, footer sticky total `tabular-nums` + tombol konfirmasi |
-| `src/components/customer/MenuBrowser.tsx` | **Diperbarui** — state `customizingItem`, `handleAddToCart()` membuka sheet bila ada modifier (selain itu langsung +1), `handleConfirmCustomization()` menambah `payload.quantity`, render `ModifierSheet` |
-| `TODO.md` | `3.4` ditandai `[x]` |
+| `src/lib/cart.ts` | **Baru** — `CartLine`, `buildCartLineId` (menu + modifier terurut + catatan ternormalisasi), `mergeCartLines`, `updateLineQuantity` (≤0 menghapus), `summarizeCart`, `findQuantityByItem`, `normalizeCartNote` |
+| `src/lib/cart.test.ts` | **Baru** — 13 test (ID stabil/unik, merge, update/remove, ringkasan, hitung per item) |
+| `src/store/useCartStore.ts` | **Baru** — Zustand + `persist` (`fnb-cart`, v1, `skipHydration`, `partialize`), aksi `setContext` (meja berbeda → kosongkan), `setOrderType`, `addLine`, `setQuantity`, `removeLine`, `clear`, `applyRemoteLines`; selector `selectTotalQuantity`, `selectSubtotal`, `selectQuantityByItem` |
+| `src/store/useCartStore.test.ts` | **Baru** — 11 test (konteks meja, merge, hapus, remote, order type, selector) |
+| `src/lib/cart-sync.ts` | **Baru** — `CartSyncChannel`, `createBroadcastCartSync(tableSlug)` (BroadcastChannel `fnb-cart:<slug>`), feature-detect |
+| `src/hooks/useCartHydrated.ts` | **Baru** — rehidrasi manual + **guard `store.persist` undefined saat SSR** |
+| `src/hooks/useCartSync.ts` | **Baru** — publish debounce 150 ms, terapkan remote tanpa memantulkan balik (anti-loop) |
+| `src/components/customer/MenuBrowser.tsx` | **Diperbarui** — state `cartQuantities` dihapus, memakai store (`addLine` + `buildCartLineId`), `setContext` meja/sesi, badge kuantitas dari `findQuantityByItem` setelah hydrated |
+| `src/components/customer/CustomerHeader.tsx` | **Diperbarui** — `orderType` dipindah ke store (Dine In/Takeaway), tipe `OrderType` dari store |
+| `src/app/(customer)/t/[tableSlug]/page.tsx` | **Diperbarui** — meneruskan `tableSlug` & `sessionId` ke `MenuBrowser` |
+| `TODO.md` | `3.5` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`3.5 Store Keranjang & Sinkronisasi Group Order`**, ubah menjadi `[/]`.
-2. **Buat `src/lib/cart.ts`** (pure + `src/lib/cart.test.ts`):
-   * `interface CartLine { id: string; menuItemId: string; name: string; imageUrl: string | null; station: StationKey; basePrice: number; unitPrice: number; quantity: number; modifiers: PricingModifierInput[]; note: string }`.
-   * `buildCartLineId(menuItemId, modifiers, note)` — gabungan `menuItemId` + id modifier terurut + catatan yang dinormalisasi (trim/lowercase), sehingga baris identik menyatu dan baris berbeda tetap terpisah.
-   * `mergeCartLines(lines, incoming)` — jumlahkan `quantity` bila `id` sama.
-   * `updateLineQuantity(lines, id, quantity)` — hapus baris bila quantity ≤ 0.
-   * `summarizeCart(lines)` → `{ totalQuantity, subtotal }` (subtotal = Σ `unitPrice × quantity`, Rupiah bulat).
-   * Uji: id stabil & berbeda untuk modifier berbeda, merge identik, hapus saat 0, subtotal, catatan memengaruhi id.
-3. **Buat `src/store/useCartStore.ts`** (Zustand + `persist`, TANPA dependency baru):
-   * State: `tableSlug: string | null`, `sessionId: string | null`, `orderType: "DINE_IN" | "TAKEAWAY"`, `lines: CartLine[]`.
-   * Actions: `setContext({ tableSlug, sessionId })` (bila `tableSlug` berbeda → kosongkan keranjang), `setOrderType`, `addLine(line)`, `setQuantity(id, quantity)`, `removeLine(id)`, `clear()`, `applyRemoteLines(lines)`.
-   * Selector helper (fungsi terpisah, bukan di dalam store): `selectTotalQuantity(state)`, `selectQuantityByItem(state, menuItemId)`.
-   * `persist` dengan `name: "fnb-cart"`, `version: 1`, `storage: createJSONStorage(() => localStorage)`, `partialize` hanya `{ tableSlug, sessionId, orderType, lines }`.
-   * **Hindari hydration mismatch**: jangan membaca store saat render pertama di server; gunakan hook `useCartHydrated()` (`useEffect` + `useCartStore.persist.hasHydrated()`/`onFinishHydration`) dan tampilkan UI keranjang hanya setelah hydrated.
-4. **Sinkronisasi group order** — buat `src/lib/cart-sync.ts`:
-   * `interface CartSyncChannel { publish(lines: CartLine[]): void; subscribe(handler): () => void; close(): void }`.
-   * Implementasi `createBroadcastCartSync(tableSlug)` memakai `BroadcastChannel("fnb-cart:<tableSlug>")` (tersedia di browser modern) + guard `typeof window === "undefined"` / feature-detect; ini menyinkronkan lintas tab/perangkat pada origin yang sama.
-   * Di `MenuBrowser`/`FloatingCart` (3.6) gunakan channel ini untuk memanggil `applyRemoteLines` saat menerima pesan, dan `publish` setiap kali `lines` berubah (debounce ≤ 150 ms).
-   * **Dokumentasikan batasan** di HANDOVER: sinkronisasi lintas perangkat sungguhan menunggu Supabase Realtime (butuh kredensial) — jangan mengklaim sudah real-time multi-device.
-5. **Integrasikan `MenuBrowser`** dengan store (hapus state sementara `cartQuantities`): `quantityInCart` dari `selectQuantityByItem`, `handleAddToCart` memakai `buildCartLineId` + `addLine` (modifier & catatan dari `ModifierSheet`), `orderType` dibaca dari store. Kirim `tableSlug` + `sessionId` sebagai props dari page → `setContext` pada `useEffect`.
-6. **Verifikasi**: `npm test` (cart), `typecheck`, `lint`, `build`. Render-check SSR dengan fixture untuk `MenuBrowser` tetap boleh dipakai (hapus file sementara sebelum commit).
-7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `3.6 Halaman Keranjang, Upselling, & Rincian Biaya`), `git commit` (`feat(customer): add persistent cart store with group-order sync`), push.
+1. Ambil **`3.6 Halaman Keranjang, Upselling, & Rincian Biaya`**, ubah menjadi `[/]`.
+2. **Buat `src/lib/upsell.ts`** (pure + `src/lib/upsell.test.ts`):
+   * `getUpsellSuggestions(categories, lines, { limit = 3 })` — rekomendasikan item yang **belum ada** di keranjang, prioritaskan `isBestSeller`, lalu kategori `minuman-segar`/`kopi-teh` (cross-selling), hanya item `isOrderable`, maksimal `limit`.
+   * `describeLineModifiers(line)` — gabungan nama modifier + catatan untuk ditampilkan ("Pedas · Extra Telur · tanpa bawang").
+   * Uji: mengecualikan item yang sudah ada, prioritas best seller, hanya item orderable, batas `limit`, deskripsi modifier.
+3. **Buat `src/lib/cart-totals.ts`** (pure + test): `calculateCartBreakdown(lines, { servicePercent = 5, taxPercent = 10 })` → `{ subtotal, serviceCharge, taxAmount, grandTotal, totalQuantity }` **memakai `calculateOrderTotals()` dari `src/lib/pricing.ts`** (bangun `PricingItemInput[]` dari `CartLine`: `basePrice` = harga dasar menu, `modifiers` = modifier baris, `quantity`). Jangan menulis ulang rumus; sertakan test agar angka identik dengan `pricing.ts`.
+4. **Tambahkan ke `useCartStore`**: `customerName: string`, `customerPhone: string`, `setCustomer({ name, phone })` (+ masuk `partialize`). Validasi ringan di form, bukan di store.
+5. **Buat `src/components/customer/FloatingCartBar.tsx`** (`"use client"`, thumb zone):
+   * Hanya tampil bila `useCartHydrated()` **dan** `lines.length > 0`; `sticky bottom-0` dengan `safe-area-pb`, tombol ≥ 48px, total kuantitas + subtotal `tabular-nums`, membuka `CartSheet`.
+   * Pisahkan komponen presentasional `CartSummaryBar({ totalQuantity, subtotal, onOpen })` agar bisa diverifikasi lewat `renderToStaticMarkup` tanpa hydration.
+6. **Buat `src/components/customer/CartSheet.tsx`** (`BottomSheet`):
+   * Daftar baris: nama, `describeLineModifiers`, harga satuan & subtotal baris, stepper −/+ (48px) via `setQuantity`, tombol hapus (`removeLine`), empty state + tombol "Lihat menu" yang menutup sheet.
+   * Widget **upselling**: kartu kecil dari `getUpsellSuggestions` dengan tombol tambah (pakai `buildCartLineId` + `addLine`; bila item punya modifier, buka `ModifierSheet` — koordinasikan dengan `MenuBrowser`/props agar tidak duplikasi logika).
+   * Form nama & WhatsApp opsional (input `type="tel"`, maxLength, helper text) → `setCustomer`.
+   * Rincian biaya transparan: Subtotal, Service Charge 5%, PB1 10%, Total — semua `tabular-nums`, plus catatan "Kode unik ditambahkan untuk transfer manual".
+   * Tombol utama "Lanjut ke Pembayaran" (belum berfungsi — arahkan ke langkah 4.1; disabled + tooltip "Segera hadir" bila alur belum ada).
+7. **Integrasikan** `FloatingCartBar` + `CartSheet` di halaman `/t/[tableSlug]` (render setelah `MenuBrowser`, kirim props yang diperlukan).
+8. **Verifikasi**: `npm test` (upsell & breakdown), `typecheck`, `lint`, `build`, lalu render-check SSR untuk `CartSummaryBar`/`CartSheet` bagian statis dengan fixture (file sementara **wajib dihapus sebelum commit**).
+9. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke **Fase 4.1: `POST /api/orders`**), `git commit` (`feat(customer): add cart sheet with upselling and transparent cost breakdown`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Modifier**: `createInitialSelection` memilih default; grup SINGLE wajib tanpa default otomatis memilih opsi pertama (mencegah form invalid sejak awal). `toggleOption` tidak pernah mengosongkan grup SINGLE wajib.
-* **Harga**: `calculateSelectionTotal`/`selectionToModifiers` hanya pembungkus `calculateLineTotal` di `src/lib/pricing.ts` — jangan menduplikasi rumus.
-* **State keranjang**: masih `useState` di `MenuBrowser` (SEMENTARA) → wajib diganti store Zustand di 3.5; hapus komentar "sementara" setelahnya.
-* **Bottom sheet** (`src/components/ui/bottom-sheet.tsx`) tidak merender children saat tertutup → state form otomatis segar setiap dibuka.
-* **Sticky offset**: `CUSTOMER_HEADER_OFFSET_PX = 125`; section menu `scroll-mt-[190px]`.
+* **BUG YANG SUDAH DIPERBAIKI (jangan diulang)**: saat SSR, `zustand/middleware persist` **tidak memasang `store.persist`** bila storage tidak tersedia (lihat `if (!storage) return config(...)`). Akses `useCartStore.persist` tanpa guard menyebabkan `Cannot read properties of undefined`. Gunakan `const persistApi = useCartStore.persist; if (!persistApi) { ... }` seperti di `useCartHydrated`.
+* **Hydration mismatch**: `persist` memakai `skipHydration: true`; rehidrasi manual via `useCartHydrated()` (render server & client pertama = keranjang kosong). Jangan membaca localStorage saat render.
+* **Sinkronisasi keranjang saat ini lintas tab/perangkat pada origin yang sama** (`BroadcastChannel`). Sinkronisasi lintas perangkat berbeda **belum** ada — butuh Supabase Realtime (kredensial belum tersedia). Jangan mengklaim real-time multi-device.
+* **Urutan kalkulasi (WAJIB)**: subtotal → diskon → service 5% → PB1 10% → `uniqueCode` (khusus `MANUAL_TRANSFER`). Semua lewat `src/lib/pricing.ts`.
+* **Modifier**: `createInitialSelection` memilih default; grup SINGLE wajib tanpa default memilih opsi pertama. `toggleOption` tak pernah mengosongkan grup SINGLE wajib.
+* **Sticky**: `CUSTOMER_HEADER_OFFSET_PX = 125`; section menu `scroll-mt-[190px]`.
 * **Rahasia**: `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`, stok bahan — jangan pernah ke klien.
-* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`.
-* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`. Grup modifier: Level Pedas (wajib, SINGLE), Ukuran (wajib, SINGLE), Extra Topping (MULTIPLE maks 3), Level Gula (wajib, SINGLE).
+* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; urutan validasi env → slug/query → body → DB.
+* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
 * **Tema**: `:root` Customer Warm Light (`#FAF8F5`, primary `#D9381E`), `.dark` POS/KDS Slate Dark; target sentuh pelanggan ≥ 48px, POS/KDS 56px; angka wajib `tabular-nums`.
@@ -73,6 +78,7 @@
 * **[Sesi #1 — 2026-11-03 · 2.2 Katalog Menu Publik]**: `menu.ts` + 13 test, route `GET /api/menu`. Commit `2c7e45e`.
 * **[Sesi #1 — 2026-11-03 · 2.3 Call Waiter]**: `waiter-call.ts` + 9 test, `api/request.ts`, route call-waiter. Fase 2 tuntas. Commit `f0913e1`.
 * **[Sesi #1 — 2026-11-03 · 3.1 Header Meja]**: Fondasi UI + `CustomerHeader` + `CallWaiterSheet` + page `/t/[tableSlug]`. Commit `3e4faee`.
-* **[Sesi #1 — 2026-11-03 · 3.2 Kategori & Pencarian]**: tipe & select menu bersama, service katalog, `menu-filter.ts` (+13 test), `CategoryTabs`, `MenuBrowser`, `MenuCard` awal. Commit `91e698f`.
-* **[Sesi #1 — 2026-11-03 · 3.3 Kartu Menu]**: `getOrderabilityLabel/Text`, `MenuCard` final, state keranjang sementara. Commit `d69ee24`.
-* **[Sesi #1 — 2026-11-03 · 3.4 Modifier Sheet]**: `modifier-selection.ts` (+21 test, total 91), `ModifierSheet` (radio/checkbox, stepper, catatan, validasi, harga reaktif) dan integrasi `MenuBrowser`. `typecheck`/`lint`/`build` hijau. Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 3.2 Kategori & Pencarian]**: tipe & select menu bersama, service katalog, `menu-filter.ts` (+13 test), `CategoryTabs`, `MenuBrowser`. Commit `91e698f`.
+* **[Sesi #1 — 2026-11-03 · 3.3 Kartu Menu]**: `getOrderabilityLabel/Text`, `MenuCard` final. Commit `d69ee24`.
+* **[Sesi #1 — 2026-11-03 · 3.4 Modifier Sheet]**: `modifier-selection.ts` (+21 test), `ModifierSheet`, integrasi. Commit `35ecdb4`.
+* **[Sesi #1 — 2026-11-03 · 3.5 Cart Store & Sync]**: `cart.ts` (+13 test), `useCartStore` (+11 test, persist + skipHydration), `cart-sync.ts` + `useCartSync` (BroadcastChannel), `useCartHydrated` (guard SSR), integrasi `MenuBrowser`/`CustomerHeader`/page. Menemukan & memperbaiki bug SSR `store.persist` undefined. Total 115 test. Commit menyusul.

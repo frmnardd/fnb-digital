@@ -80,7 +80,11 @@ export default async function CustomerTablePage({
         )}
 
         {menuCategories.length > 0 ? (
-          <MenuBrowser categories={menuCategories} />
+          <MenuBrowser
+            categories={menuCategories}
+            tableSlug={table.qrSlug}
+            sessionId={session?.id ?? null}
+          />
         ) : (
           <section className="flex flex-col gap-1 rounded-xl border border-dashed bg-card/60 p-4">
             <p className="text-sm font-extrabold">Menu belum tersedia</p>

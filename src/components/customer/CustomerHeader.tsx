@@ -6,17 +6,16 @@ import { useState } from "react";
 import { CallWaiterSheet } from "@/components/customer/CallWaiterSheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useCartStore, type OrderType } from "@/store/useCartStore";
 
 /**
  * Header meja pelanggan + quick action bar.
  *
- * Catatan: state `orderMode` akan dipindahkan ke Zustand store pada sub-tugas 3.5
- * agar konsisten dengan keranjang (dine-in vs takeaway).
+ * Mode pesanan (Dine In/Takeaway) disimpan di `useCartStore` agar konsisten
+ * dengan isi keranjang dan nilai yang dikirim saat checkout.
  */
 
-export type OrderMode = "DINE_IN" | "TAKEAWAY";
-
-const ORDER_MODES: Array<{ value: OrderMode; label: string }> = [
+const ORDER_MODES: Array<{ value: OrderType; label: string }> = [
   { value: "DINE_IN", label: "Dine In" },
   { value: "TAKEAWAY", label: "Takeaway" },
 ];
@@ -34,7 +33,8 @@ export function CustomerHeader({
   areaName,
   sessionStatus,
 }: CustomerHeaderProps) {
-  const [orderMode, setOrderMode] = useState<OrderMode>("DINE_IN");
+  const orderMode = useCartStore((state) => state.orderType);
+  const setOrderMode = useCartStore((state) => state.setOrderType);
   const [isCallWaiterOpen, setIsCallWaiterOpen] = useState(false);
 
   return (
