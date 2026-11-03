@@ -35,6 +35,9 @@ const serverEnvSchema = z.object({
 
   /** Payload QRIS statis merchant untuk mode demo/generator lokal. */
   QRIS_STATIC_PAYLOAD: z.string().min(20).optional(),
+
+  /** Izinkan webhook tanpa signature (HANYA untuk demo lokal, jangan di produksi). */
+  PAYMENT_ALLOW_UNSIGNED_WEBHOOK: z.enum(["true", "false"]).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

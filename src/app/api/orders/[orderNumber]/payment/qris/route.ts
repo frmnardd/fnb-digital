@@ -31,6 +31,8 @@ interface StoredQrisPayload {
   qrString?: string;
   qrUrl?: string | null;
   mode?: "gateway" | "demo";
+  /** `order_id` yang dikirim ke gateway, dipakai mencocokkan webhook. */
+  gatewayOrderId?: string | null;
 }
 
 export async function POST(_request: NextRequest, context: RouteContext): Promise<Response> {
@@ -94,12 +96,14 @@ export async function POST(_request: NextRequest, context: RouteContext): Promis
     let mode: "gateway" | "demo" = "gateway";
     let provider = process.env.PAYMENT_PROVIDER ?? "midtrans";
     let gatewayRefId: string | null = null;
+    let gatewayOrderId: string | null = null;
 
     try {
       const charge = await createQrisCharge({ orderNumber, amount: order.grandTotal });
 
       qrUrl = charge.qrUrl;
       gatewayRefId = charge.transactionId;
+      gatewayOrderId = charge.gatewayOrderId;
 
       qrString =
         charge.qrString ??
@@ -138,6 +142,7 @@ export async function POST(_request: NextRequest, context: RouteContext): Promis
           qrString,
           qrUrl,
           mode,
+          gatewayOrderId,
         } as unknown as Prisma.InputJsonValue,
       },
       select: { id: true },

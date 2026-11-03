@@ -21,6 +21,8 @@ export interface QrisChargeResult {
   qrString: string | null;
   qrUrl: string | null;
   transactionId: string | null;
+  /** `order_id` yang dikirim ke gateway — dipakai mencocokkan webhook. */
+  gatewayOrderId: string;
   raw: Record<string, unknown>;
 }
 
@@ -39,6 +41,9 @@ export async function createQrisCharge(input: QrisChargeInput): Promise<QrisChar
   const isProduction = process.env.MIDTRANS_IS_PRODUCTION === "true";
   const baseUrl = isProduction ? PRODUCTION_BASE_URL : SANDBOX_BASE_URL;
 
+  // Midtrans mensyaratkan `order_id` unik per transaksi → tambahkan timestamp.
+  const gatewayOrderId = `${input.orderNumber}-${Date.now()}`;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -53,7 +58,7 @@ export async function createQrisCharge(input: QrisChargeInput): Promise<QrisChar
       body: JSON.stringify({
         payment_type: "qris",
         transaction_details: {
-          order_id: `${input.orderNumber}-${Date.now()}`,
+          order_id: gatewayOrderId,
           gross_amount: input.amount,
         },
         qris: { acquirer: "gopay" },
@@ -83,6 +88,7 @@ export async function createQrisCharge(input: QrisChargeInput): Promise<QrisChar
       qrString,
       qrUrl,
       transactionId: typeof payload.transaction_id === "string" ? payload.transaction_id : null,
+      gatewayOrderId,
       raw: payload,
     };
   } catch (error) {
