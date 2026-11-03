@@ -6,62 +6,64 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 5 — Halaman Kasir (POS Dashboard)` — **Fase 4 SELESAI (6/6)**
-* **Sub-Tugas Terakhir yang Selesai**: `4.6 Live Order Tracker & E-Struk` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `5.1 Layout Utama POS 3-Panel & Notifikasi Suara`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**238 test**, 78 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
-* **Route baru**: `/api/orders/[orderNumber]/track`, halaman `/t/[tableSlug]/order/[orderNumber]` & `.../receipt` (ƒ).
-* **Verifikasi kontrak HTTP**: `track` orderNumber invalid → 400, valid → 500 rapi (DB belum ada); halaman tracker & struk → **HTTP 200** (fallback ramah).
+* **Fase Aktif**: `Fase 5 — Halaman Kasir (POS Dashboard)` (1/9 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `5.1 Layout Utama POS 3-Panel & Notifikasi Suara` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `5.2 Tab Antrean QR & Validasi Bayar Tunai/Bukti Transfer`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**242 test**, 79 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
+* **Route baru**: `/cashier` (ƒ) dengan route group `(pos)` bertema `.dark`.
+* **Verifikasi runtime**: `GET /cashier` → **HTTP 200**; HTML memuat "Antrean Pesanan", "Pilih pesanan", "Shift belum dibuka", "Belum ada pesanan masuk", kelas `dark`.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 21 dari 31 sub-tugas selesai.
+* **Progress**: 22 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/order-tracking.ts` | **Baru** — `TRACKER_STEPS` (Diterima/Dimasak/Siap Diantar/Selesai), `mapOrderStatusToStep`, `getTrackerState` (gabung status order + item, `progressPercent`, `isWaitingPayment`, `isCancelled`), `buildOrderTrackPayload` |
-| `src/lib/order-tracking.test.ts` | **Baru** — 14 test (semua status order, dorongan status item, VOIDED, progress 0/33/67/100, cancelled) |
-| `src/app/api/orders/[orderNumber]/track/route.ts` | **Baru** — payload status + item + tracker |
-| `src/components/customer/OrderTracker.tsx` | **Baru** — stepper vertikal 4 langkah (ikon per tahap, state done/current/todo, progress bar), polling 5 dtk berhenti saat selesai/cancel, daftar item + chip status, ringkasan pembayaran |
-| `src/app/(customer)/t/[tableSlug]/order/[orderNumber]/page.tsx` | **Baru** — halaman tracker (server + client), fallback 200 |
-| `src/app/(customer)/t/[tableSlug]/order/[orderNumber]/receipt/page.tsx` | **Baru** — e-struk 80 mm: identitas, meja/tipe/waktu, item + modifier + catatan, subtotal/diskon/service/PB1/kode unik/total, metode & status bayar, footer |
-| `src/components/customer/PrintReceiptButton.tsx` | **Baru** — `window.print()` (Cetak / Simpan PDF) |
-| `src/app/globals.css` | Ditambah blok `@media print` (`.print-hidden`, `.receipt-paper` 80 mm) |
-| `PaymentQrisPanel`, `VirtualAccountPanel`, `ManualTransferPanel`, `CashierPaymentPanel` | Diperbarui — tombol **Lacak Pesanan** setelah lunas (`tableSlug` diteruskan dari halaman) |
-| `.../pay/[orderNumber]/page.tsx` | Diperbarui — tautan "Lacak Pesanan" |
-| `TODO.md` | `4.6` ditandai `[x]` (Fase 4 selesai) |
+| `src/lib/audio/notification.ts` | **Baru** — nada notifikasi via Web Audio (`new-order`, `waiter-call`), `unlockAudioContext()`, `playNotificationTone()` (graceful `false` tanpa browser), `resetNotificationAudio()` |
+| `src/lib/audio/notification.test.ts` | **Baru** — 4 test perilaku aman di Node (tanpa AudioContext) |
+| `src/hooks/useNotificationSound.ts` | **Baru** — preferensi suara di `localStorage` (`fnb-pos-sound-enabled`), `enable`/`disable`/`play` |
+| `src/types/pos.ts` | **Baru** — `PosQueueOrder`, `PosOrderStatus` |
+| `src/components/pos/PosSidebar.tsx` | **Baru** — 5 ikon nav 76px; item belum tersedia dinonaktifkan + label "Soon" pada `title` |
+| `src/components/pos/PosTopbar.tsx` | **Baru** — nama kasir, status shift, jam WIB (render setelah mount, anti hydration mismatch), toggle suara 56px |
+| `src/components/pos/PosQueueCard.tsx` | **Baru** — nomor, meja/tipe, badge status berwarna, jam masuk, jumlah item, total `tabular-nums` |
+| `src/components/pos/PosQueueList.tsx` | **Baru** — daftar + empty state "Belum ada pesanan masuk" |
+| `src/components/pos/PosBillPanel.tsx` | **Baru** — ringkasan pesanan terpilih / empty state "Pilih pesanan" |
+| `src/components/pos/CashierWorkspace.tsx` | **Baru** — komposisi 3 panel (sidebar | antrean | detail 380px), state pemilihan |
+| `src/app/(pos)/layout.tsx` | **Baru** — `dark h-dvh overflow-hidden` (Slate Dark) |
+| `src/app/(pos)/cashier/page.tsx` | **Baru** — server component memuat antrean (`PENDING_PAYMENT`/`WAITING_CASHIER_APPROVAL`/`CONFIRMED`, maks 50), fallback `[]` saat DB gagal |
+| `TODO.md` | `5.1` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`5.1 Layout Utama POS 3-Panel & Notifikasi Suara`**, ubah menjadi `[/]`.
-2. **Buat route group POS**:
-   * `src/app/(pos)/layout.tsx` — bungkus dengan `<div className="dark h-dvh overflow-hidden bg-background text-foreground">` (tema Slate Dark, CONTEXT §5.1) **tanpa** `max-w-md`; jangan `sticky` body-scroll — panel masing-masing yang scroll.
-   * `src/app/(pos)/cashier/page.tsx` — kerangka **3 panel** dengan grid: sidebar ikon 72–80px, panel tengah `flex-1`, panel detail kanan `w-[380px]` (di layar < lg boleh jadi drawer/stack).
-   * Semua teks harga `tabular-nums`; tombol minimal **56×56** (`min-h-touch min-w-touch` yang sudah ada di Tailwind config).
-3. **Komponen baru di `src/components/pos/`**:
-   * `PosSidebar.tsx` — ikon `LayoutList` (Antrean), `LayoutGrid` (Meja/Floor Plan), `PlusSquare` (Walk-in), `Wallet` (Shift), `BarChart3` (Laporan) + indikator aktif; item non-aktif diberi badge "Soon" bila halamannya belum ada.
-   * `PosTopbar.tsx` — nama kasir (sementara "Kasir"), jam berjalan (client, `tabular-nums`), status shift, dan toggle **suara notifikasi** (tersimpan di `localStorage`).
-   * `PosQueueList.tsx` + `PosQueueCard.tsx` — daftar antrean kosong (empty state) dengan placeholder skeleton; kartu: nomor pesanan, meja/tipe, total, waktu masuk, badge status (`WAITING_CASHIER_APPROVAL` kuning, `PENDING_PAYMENT` abu, `CONFIRMED` hijau).
-   * `PosBillPanel.tsx` — panel kanan: ringkasan pesanan terpilih / empty state "Pilih pesanan".
-4. **Notifikasi suara tanpa file audio**: buat `src/lib/audio/notification.ts` (pure-ish) dengan `playNotificationTone(kind: "new-order" | "waiter-call")` memakai `AudioContext` + `OscillatorNode` (dua nada singkat, envelope gain), guard `typeof window`, dan `unlockAudioContext()`; kemudian hook `src/hooks/useNotificationSound.ts` (toggle + persist `localStorage`, panggil `unlockAudioContext()` pada interaksi pertama). Jangan pakai file .mp3.
-5. **Data sementara**: halaman cashier cukup menampilkan empty state (DB belum ada) — jangan mengarang data palsu di UI produksi. Bila perlu demo, gunakan komponen presentasional yang menerima props array kosong.
-6. **Verifikasi**: `typecheck`, `lint`, `build`, probe `GET /cashier` → **HTTP 200** (fallback, bukan 500), dan cek HTML mengandung teks panel ("Antrean", "Pilih pesanan", "Shift").
-7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `5.2 Tab Antrean QR & Validasi Bayar`), `git commit` (`feat(pos): add three-panel cashier layout with notification sound`), push.
+1. Ambil **`5.2 Tab Antrean QR & Validasi Bayar Tunai/Bukti Transfer`**, ubah menjadi `[/]`.
+2. **Tambahkan helper harga** di `src/lib/pricing.ts` + test: `calculateCashChange(amountReceived, total)` → kembalian (≥0) dan `PricingError` bila `amountReceived < total` atau bukan bilangan bulat.
+3. **Buat `GET /api/orders/[orderNumber]/bill`** (atau `GET /api/pos/orders/[orderNumber]`): detail pesanan untuk panel kanan — order (nomor, status, tipe, meja, totals), items (nama, qty, unitPrice, modifier JSON, catatan, status), dan payment terakhir (method, status, `proofImageUrl`, `amountPaid`, `changeAmount`). Jangan kirim `costPrice`.
+4. **Buat `POST /api/orders/[orderNumber]/cashier-confirm`**:
+   * Body Zod strict: `{ action: "MARK_PAID" | "REJECT", amountReceived?: number, note?: string }`.
+   * `MARK_PAID`: ambil `Payment` PENDING terakhir; bila metode `CASH` dan `amountReceived` dikirim → hitung `changeAmount` via `calculateCashChange` (422 bila kurang); set `payment.status = PAID`, `paidAt`; `order.status = CONFIRMED` + `confirmedAt` (bila masih `PENDING_PAYMENT`/`WAITING_CASHIER_APPROVAL`); bump `tableSession.lastActivityAt`. Untuk `MANUAL_TRANSFER` wajib ada `proofImageUrl` (409 bila belum upload).
+   * `REJECT`: set `payment.status = FAILED`; `order.status = CANCELLED` + `cancelledAt`.
+   * Idempoten: bila payment sudah `PAID` → 200 `{ duplicate: true }`.
+   * **Belum ada autentikasi staf** di proyek ini: beri komentar `// TODO(RBAC): lindungi endpoint ini setelah modul auth staf dibuat` dan catat di HANDOVER. Jangan mengklaim endpoint aman.
+5. **UI**:
+   * Perluas `PosBillPanel`: muat `/bill` saat pesanan dipilih (client fetch, state loading/error), tampilkan item + modifier + catatan, badge metode pembayaran, dan `proofImageUrl` sebagai thumbnail yang bisa diklik (buka tab baru) untuk `MANUAL_TRANSFER`.
+   * Tombol aksi 56px: **Konfirmasi Lunas** (primary), **Tolak** (destructive + konfirmasi), serta input `amountReceived` untuk metode CASH dengan tombol pecahan cepat (`Uang Pas`, 50.000, 100.000) — kalkulator lengkap dikerjakan di 5.3, jadi cukup input sederhana + teks kembalian.
+   * Setelah sukses: `router.refresh()` agar antrean server component ter-update.
+6. **Verifikasi**: `npm test` (calculateCashChange), `typecheck`, `lint`, `build`; probe: `/api/orders/BAD!!/bill` → 400, `/api/orders/BAD!!/cashier-confirm` → 400, body `action` invalid → 422, tanpa DB → 500 rapi; `/cashier` tetap 200.
+7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `5.3 CashPaymentModal`), `git commit` (`feat(pos): add queue item bill detail and cashier confirmation`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **E-Struk PDF**: memakai dialog cetak browser (`window.print()` → "Save as PDF"). PDF server-side (`pdf-lib`) belum diizinkan (butuh persetujuan dependency).
-* **QRIS/VA/bukti transfer mode demo** (tanpa kredensial gateway). Webhook hanya boleh tanpa signature bila `PAYMENT_ALLOW_UNSIGNED_WEBHOOK=true` (jangan di produksi).
-* **`order_id` gateway** = `<orderNumber>-<timestamp>` (disimpan di `gatewayPayload.gatewayOrderId`); `extractOrderNumber()` menanganinya.
-* **PIN meja** 4 digit hashed; benar → order `CONFIRMED` (payment tetap `PENDING`).
-* **Status order**: `CASH`/`EDC_CARD` → `WAITING_CASHIER_APPROVAL`; metode online → `PENDING_PAYMENT`; PAID → `CONFIRMED`.
+* **Autentikasi staf belum ada** (RBAC direncanakan menyusul). Endpoint kasir saat ini tanpa proteksi — jangan menulis klaim keamanan; tambahkan `TODO(RBAC)`.
+* **POS/KDS memakai tema `.dark`** (Slate Dark) dan target sentuh 56px; angka wajib `tabular-nums`.
+* **Halaman POS memakai `h-dvh overflow-hidden`** — jangan menambahkan `sticky` pada body; setiap panel scroll sendiri.
+* **Suara notifikasi** dibuat via Web Audio (tanpa file .mp3) dan baru aktif setelah pengguna menekan toggle (kebijakan autoplay browser). Preferensi tersimpan di localStorage.
+* **E-Struk PDF** memakai dialog cetak browser (`window.print()`); PDF server-side belum diizinkan.
+* **Mode demo pembayaran**: QRIS/VA lokal, bukti transfer di `public/uploads/proofs`; webhook tanpa signature hanya bila `PAYMENT_ALLOW_UNSIGNED_WEBHOOK=true`.
 * **Rahasia**: `MIDTRANS_SERVER_KEY`, `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash` — jangan ke klien/log.
 * **Harga**: server selalu menghitung ulang (`buildOrderDraft`); Zod strict menolak field harga dari klien. Urutan: subtotal → diskon → service 5% → PB1 10% → `uniqueCode` (khusus `MANUAL_TRANSFER`).
 * **BUG SSR ZUSTAND (jangan diulang)**: `persist` tidak memasang `store.persist` saat storage tidak tersedia → guard `const persistApi = useCartStore.persist; if (!persistApi) {...}`.
-* **Sinkronisasi keranjang**: lintas tab/origin sama (`BroadcastChannel`); multi-device butuh Supabase Realtime.
-* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`.
+* **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; urutan validasi env → slug/param → body → DB.
 * **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
-* **Tema**: `:root` Customer Warm Light, `.dark` POS/KDS Slate Dark; target sentuh pelanggan ≥ 48px, POS/KDS 56px; angka wajib `tabular-nums`.
 * **Memory files** ada di root repo **dan** `C:\Users\Firman Ardiansyah\Downloads\` — perbarui keduanya setiap sesi.
 
 ## 5. Riwayat Log Estafet (Chronological Relay History)
@@ -82,8 +84,9 @@
 * **[Sesi #1 — 2026-11-03 · 3.5 Cart Store & Sync]**: `cart.ts` (+13), `useCartStore` (+11), `cart-sync`, fix bug SSR `persist`. Commit `6787d5b`.
 * **[Sesi #1 — 2026-11-03 · 3.6 Cart Sheet & Upselling]**: `upsell.ts` (+9), `cart-totals.ts` (+6), `FloatingCartBar` + `CartSheet`. Fase 3 tuntas. Commit `6f551dc`.
 * **[Sesi #1 — 2026-11-03 · 4.1 API Orders]**: `order-draft.ts` (+18 test) + `POST /api/orders`. Commit `4a60c78`.
-* **[Sesi #1 — 2026-11-03 · 4.2 QRIS]**: `payment/qris.ts` (+16 test), adapter Midtrans, API qris & status, `PaymentQrisPanel`, halaman bayar. Commit `a213e7e`.
+* **[Sesi #1 — 2026-11-03 · 4.2 QRIS]**: `payment/qris.ts` (+16 test), adapter Midtrans, API qris & status, `PaymentQrisPanel`. Commit `a213e7e`.
 * **[Sesi #1 — 2026-11-03 · 4.3 Transfer Bank]**: `va.ts` (+9), `manual-transfer.ts` (+11), API VA/manual/proof, panel VA & manual, hub metode. Commit `f1cdf07`.
-* **[Sesi #1 — 2026-11-03 · 4.4 Tunai di Kasir]**: `code39.ts` (+12), `pin-attempts.ts` (+7), API PIN meja, `BookingCodeCard`, `CashierPaymentPanel`, halaman cashier. Commit `a20adae`.
+* **[Sesi #1 — 2026-11-03 · 4.4 Tunai di Kasir]**: `code39.ts` (+12), `pin-attempts.ts` (+7), API PIN meja, `BookingCodeCard`, `CashierPaymentPanel`. Commit `a20adae`.
 * **[Sesi #1 — 2026-11-03 · 4.5 Webhook]**: `payment/webhook.ts` (+18 test), route webhook idempoten. Commit `b6901ef`.
-* **[Sesi #1 — 2026-11-03 · 4.6 Tracker & E-Struk]**: `order-tracking.ts` (+14 test), API `track`, `OrderTracker` (stepper + polling), halaman tracker & e-struk 80 mm + `@media print`, tautan "Lacak Pesanan" di 4 panel pembayaran. 238 test lulus; probe 400/500 rapi & kedua halaman 200. Fase 4 tuntas. Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 4.6 Tracker & E-Struk]**: `order-tracking.ts` (+14 test), API `track`, `OrderTracker`, halaman tracker & e-struk 80 mm + `@media print`. Fase 4 tuntas. Commit `02f7877`.
+* **[Sesi #1 — 2026-11-03 · 5.1 POS 3-Panel]**: `audio/notification.ts` (+4 test), `useNotificationSound`, `types/pos.ts`, `PosSidebar`/`PosTopbar`/`PosQueueCard`/`PosQueueList`/`PosBillPanel`/`CashierWorkspace`, layout `(pos)` bertema dark, halaman `/cashier` dengan antrean dari DB + fallback. 242 test lulus; `/cashier` HTTP 200 dengan seluruh teks panel. Commit menyusul.
