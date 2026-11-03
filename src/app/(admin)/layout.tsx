@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: false },
   { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed, enabled: true },
-  { href: "/admin/tables", label: "Meja & QR", icon: QrCode, enabled: false },
+  { href: "/admin/tables", label: "Meja & QR", icon: QrCode, enabled: true },
   { href: "/admin/inventory", label: "Inventori", icon: Boxes, enabled: false },
   { href: "/admin/analytics", label: "Analitik", icon: BarChart3, enabled: false },
 ] as const;
