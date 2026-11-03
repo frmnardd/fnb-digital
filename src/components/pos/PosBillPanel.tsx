@@ -1,25 +1,24 @@
 "use client";
 
-import { CheckCircle2, ExternalLink, Loader2, ReceiptText, XCircle } from "lucide-react";
+import { Banknote, CheckCircle2, ExternalLink, Loader2, ReceiptText, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { CashPaymentModal } from "@/components/pos/CashPaymentModal";
 import { Button } from "@/components/ui/button";
-import { calculateCashChange, formatRupiah } from "@/lib/pricing";
+import { formatRupiah } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import type { PosBillDetail, PosQueueOrder } from "@/types/pos";
 
 /**
  * Panel kanan POS: detail tagihan + validasi pembayaran kasir.
  *
- * - Tunai: input uang diterima + tombol pecahan cepat, pratinjau kembalian.
- * - Transfer manual: tampilkan thumbnail bukti (wajib ada sebelum melunasi).
- * - Aksi: `MARK_PAID` menandai lunas & meneruskan pesanan ke dapur, `REJECT` membatalkan.
+ * - Tunai: membuka `CashPaymentModal` (keypad + kembalian).
+ * - Non-tunai: tombol Konfirmasi Lunas (transfer manual wajib punya bukti).
+ * - Tolak: pembayaran FAILED + pesanan CANCELLED.
  *
  * TODO(RBAC): aksi ini belum memerlukan PIN supervisor; lihat 5.7.
  */
-
-const QUICK_AMOUNTS = [50000, 100000, 150000] as const;
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
   QRIS_DYNAMIC: "QRIS",
@@ -48,10 +47,10 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
   const [bill, setBill] = useState<PosBillDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [amountReceived, setAmountReceived] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isCashModalOpen, setIsCashModalOpen] = useState(false);
 
   const loadBill = useCallback(async (orderNumber: string) => {
     setIsLoading(true);
@@ -79,7 +78,7 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
   useEffect(() => {
     setNotice(null);
     setIsRejecting(false);
-    setAmountReceived("");
+    setIsCashModalOpen(false);
 
     if (!order) {
       setBill(null);
@@ -88,20 +87,6 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
 
     void loadBill(order.orderNumber);
   }, [order, loadBill]);
-
-  const total = bill?.totals.grandTotal ?? 0;
-  const receivedDigits = amountReceived.replace(/\D/g, "");
-  const receivedNumber = receivedDigits.length > 0 ? Number(receivedDigits) : null;
-
-  let changePreview: number | null = null;
-
-  if (receivedNumber !== null && Number.isFinite(receivedNumber)) {
-    try {
-      changePreview = calculateCashChange(receivedNumber, total);
-    } catch {
-      changePreview = null;
-    }
-  }
 
   async function handleAction(action: "MARK_PAID" | "REJECT") {
     if (!bill || isSubmitting) {
@@ -112,22 +97,15 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
     setNotice(null);
 
     try {
-      const body: Record<string, unknown> = { action };
-
-      if (action === "MARK_PAID" && bill.payment?.method === "CASH" && receivedNumber !== null) {
-        body.amountReceived = receivedNumber;
-      }
-
       const response = await fetch(
         `/api/orders/${encodeURIComponent(bill.orderNumber)}/cashier-confirm`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ action }),
         },
       );
       const payload = (await response.json().catch(() => null)) as {
-        data?: { changeAmount?: number; duplicate?: boolean };
         error?: { message?: string };
       } | null;
 
@@ -136,17 +114,7 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
         return;
       }
 
-      if (action === "MARK_PAID") {
-        const change = payload?.data?.changeAmount ?? 0;
-        setNotice(
-          change > 0
-            ? `Pembayaran lunas. Kembalian ${formatRupiah(change)}.`
-            : "Pembayaran lunas.",
-        );
-      } else {
-        setNotice("Pesanan ditolak dan dibatalkan.");
-      }
-
+      setNotice(action === "MARK_PAID" ? "Pembayaran lunas." : "Pesanan ditolak dan dibatalkan.");
       setIsRejecting(false);
       await loadBill(bill.orderNumber);
       router.refresh();
@@ -155,6 +123,20 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleCashPaid(changeAmount: number) {
+    if (!bill) {
+      return;
+    }
+
+    setNotice(
+      changeAmount > 0
+        ? `Pembayaran lunas. Kembalian ${formatRupiah(changeAmount)}.`
+        : "Pembayaran lunas.",
+    );
+    await loadBill(bill.orderNumber);
+    router.refresh();
   }
 
   if (!order) {
@@ -201,6 +183,7 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
   const canConfirm = payment?.status === "PENDING";
   const isCash = payment?.method === "CASH";
   const isManual = payment?.method === "MANUAL_TRANSFER";
+  const isManualMissingProof = isManual && !payment?.proofImageUrl;
 
   return (
     <div className="flex flex-col gap-3">
@@ -283,114 +266,71 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
         </div>
       </div>
 
-      {isManual && payment?.proofImageUrl ? (
-        <a
-          href={payment.proofImageUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[11px] font-bold text-primary"
-        >
-          <span className="flex items-center gap-1.5">
-            <ExternalLink className="size-3.5" aria-hidden />
-            Lihat bukti transfer
-          </span>
-          <span className="text-muted-foreground">Buka</span>
-        </a>
-      ) : null}
-
-      {isManual && !payment?.proofImageUrl && canConfirm ? (
-        <p className="rounded-lg bg-warning/10 p-2 text-[11px] font-semibold text-warning">
-          Bukti transfer belum diunggah. Minta pelanggan mengunggah bukti sebelum melunasi.
-        </p>
+      {isManual ? (
+        payment?.proofImageUrl ? (
+          <a
+            href={payment.proofImageUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[11px] font-bold text-primary"
+          >
+            <span className="flex items-center gap-1.5">
+              <ExternalLink className="size-3.5" aria-hidden />
+              Lihat bukti transfer
+            </span>
+            <span className="text-muted-foreground">Buka</span>
+          </a>
+        ) : canConfirm ? (
+          <p className="rounded-lg bg-warning/10 p-2 text-[11px] font-semibold text-warning">
+            Bukti transfer belum diunggah. Minta pelanggan mengunggah bukti sebelum melunasi.
+          </p>
+        ) : null
       ) : null}
 
       {canConfirm ? (
-        <>
+        <div className="flex flex-col gap-1.5">
           {isCash ? (
-            <div className="flex flex-col gap-1.5 rounded-lg border border-border/70 p-2">
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] font-bold">Uang diterima</span>
-                <input
-                  value={amountReceived}
-                  onChange={(event) => setAmountReceived(event.target.value)}
-                  inputMode="numeric"
-                  placeholder={String(bill.totals.grandTotal)}
-                  className="h-12 rounded-lg border border-input bg-background px-3 text-sm font-bold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </label>
-
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setAmountReceived(String(bill.totals.grandTotal))}
-                  className="min-h-touch flex-1 rounded-lg border border-border bg-card px-2 text-[11px] font-bold hover:bg-secondary"
-                >
-                  Uang Pas
-                </button>
-                {QUICK_AMOUNTS.map((amount) => (
-                  <button
-                    key={amount}
-                    type="button"
-                    onClick={() => setAmountReceived(String(amount))}
-                    className="min-h-touch flex-1 rounded-lg border border-border bg-card px-2 text-[11px] font-bold tabular-nums hover:bg-secondary"
-                  >
-                    {formatRupiah(amount)}
-                  </button>
-                ))}
-              </div>
-
-              {receivedNumber !== null && receivedNumber > 0 ? (
-                <p
-                  className={cn(
-                    "text-[11px] font-bold tabular-nums",
-                    changePreview === null ? "text-danger" : "text-success",
-                  )}
-                >
-                  {changePreview === null
-                    ? "Uang diterima kurang dari total."
-                    : `Kembalian ${formatRupiah(changePreview)}`}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="flex flex-col gap-1.5">
+            <Button className="w-full" onClick={() => setIsCashModalOpen(true)}>
+              <Banknote className="size-4" aria-hidden />
+              Bayar Tunai
+            </Button>
+          ) : (
             <Button
               className="w-full"
-              disabled={isSubmitting || (isManual && !payment?.proofImageUrl)}
+              disabled={isSubmitting || isManualMissingProof}
               onClick={() => void handleAction("MARK_PAID")}
             >
               {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
               {isSubmitting ? "Memproses…" : "Konfirmasi Lunas"}
             </Button>
+          )}
 
-            {isRejecting ? (
-              <div className="flex gap-1.5">
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  disabled={isSubmitting}
-                  onClick={() => void handleAction("REJECT")}
-                >
-                  <XCircle className="size-4" aria-hidden />
-                  Ya, tolak
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="flex-1"
-                  disabled={isSubmitting}
-                  onClick={() => setIsRejecting(false)}
-                >
-                  Batal
-                </Button>
-              </div>
-            ) : (
-              <Button variant="outline" className="w-full" onClick={() => setIsRejecting(true)}>
-                Tolak Pesanan
+          {isRejecting ? (
+            <div className="flex gap-1.5">
+              <Button
+                variant="destructive"
+                className="flex-1"
+                disabled={isSubmitting}
+                onClick={() => void handleAction("REJECT")}
+              >
+                <XCircle className="size-4" aria-hidden />
+                Ya, tolak
               </Button>
-            )}
-          </div>
-        </>
+              <Button
+                variant="secondary"
+                className="flex-1"
+                disabled={isSubmitting}
+                onClick={() => setIsRejecting(false)}
+              >
+                Batal
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" className="w-full" onClick={() => setIsRejecting(true)}>
+              Tolak Pesanan
+            </Button>
+          )}
+        </div>
       ) : null}
 
       {isPaid ? (
@@ -408,6 +348,14 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
           {notice}
         </p>
       ) : null}
+
+      <CashPaymentModal
+        open={isCashModalOpen}
+        onOpenChange={setIsCashModalOpen}
+        orderNumber={bill.orderNumber}
+        total={bill.totals.grandTotal}
+        onPaid={(changeAmount) => void handleCashPaid(changeAmount)}
+      />
     </div>
   );
 }
