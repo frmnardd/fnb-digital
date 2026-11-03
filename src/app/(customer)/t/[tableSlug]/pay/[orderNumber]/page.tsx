@@ -126,6 +126,12 @@ export default async function PaymentHubPage({ params }: PayHubProps) {
           <p className="text-[10px] font-semibold uppercase tracking-wide text-warning">
             Menunggu konfirmasi kasir
           </p>
+          <Link
+            href={`/t/${encodeURIComponent(tableSlug)}/pay/${encodeURIComponent(order.orderNumber)}/cashier`}
+            className="mt-1 inline-flex h-12 items-center justify-center rounded-lg bg-primary px-5 text-sm font-bold text-primary-foreground"
+          >
+            Lihat kode booking &amp; PIN meja
+          </Link>
         </section>
       ) : (
         <section className="flex flex-col gap-2">

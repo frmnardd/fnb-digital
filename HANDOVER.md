@@ -6,72 +6,62 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 4 — Sistem Pembayaran` (3/6 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `4.3 Integrasi Transfer Bank (VA & Transfer Manual)` ✅
-* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `4.4 Alur Pembayaran Tunai di Kasir (Pay at Cashier)`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**186 test**, 60 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
-* **Route baru**: `/api/orders/[orderNumber]/payment/va`, `.../manual`, `.../proof`; halaman `/pay/[orderNumber]` (hub), `/pay/[orderNumber]/qris`, `.../va`, `.../manual` (semua ƒ).
-* **Verifikasi kontrak HTTP** (tanpa DB): VA orderNumber invalid → 400, bank invalid (`CIMB`) → 422 (daftar bank disebut di pesan), VA/manual valid → 500 rapi, proof non-multipart → 400; keempat halaman pembayaran → **HTTP 200**.
+* **Fase Aktif**: `Fase 4 — Sistem Pembayaran` (4/6 selesai)
+* **Sub-Tugas Terakhir yang Selesai**: `4.4 Alur Pembayaran Tunai di Kasir` ✅
+* **Sub-Tugas yang Sedang Berjalan / Berikutnya**: `4.5 Webhook Payment Gateway`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**206 test**, 68 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
+* **Route baru**: `/api/orders/[orderNumber]/pin`, halaman `/pay/[orderNumber]/cashier` (ƒ).
+* **Verifikasi kontrak HTTP** (tanpa DB): PIN orderNumber invalid → 400, PIN 2 digit/huruf → 422, PIN valid → 500 rapi; halaman cashier → **HTTP 200**. SSR `BookingCodeCard` → SVG barcode **52 rect (51 bar)** + label aria + tombol salin.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 18 dari 31 sub-tugas selesai.
+* **Progress**: 19 dari 31 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/payment/va.ts` | **Baru** — `BANK_CODES`/`BANK_OPTIONS` (BCA/Mandiri/BNI/BRI), `isValidBank`, `getBankLabel`, `buildVirtualAccount` (12 digit deterministik, prefix per bank) |
-| `src/lib/payment/va.test.ts` | **Baru** — 9 test (daftar bank, validasi kode, prefix, determinisme, beda bank/pesanan, nomor tanpa digit) |
-| `src/lib/payment/manual-transfer.ts` | **Baru** — `MANUAL_TRANSFER_ACCOUNTS`, `buildTransferInstruction`, `validateProofDescriptor` (MIME JPG/PNG/WEBP/PDF & maks 2 MB), `buildProofFileName` (ekstensi dari MIME, anti path traversal), `buildProofPublicUrl` |
-| `src/lib/payment/manual-transfer.test.ts` | **Baru** — 11 test |
-| `src/app/api/orders/[orderNumber]/payment/va/route.ts` | **Baru** — POST `{ bank }`, idempoten per bank, simpan `gatewayPayload { bank, vaNumber }`, TTL 15 menit |
-| `src/app/api/orders/[orderNumber]/payment/manual/route.ts` | **Baru** — POST instruksi transfer (rekening + nominal termasuk kode unik), TTL 24 jam |
-| `src/app/api/orders/[orderNumber]/payment/proof/route.ts` | **Baru** — POST multipart `proof`, validasi metadata, simpan ke `public/uploads/proofs`, update `Payment.proofImageUrl` |
-| `src/components/customer/VirtualAccountPanel.tsx` | **Baru** — pemilih bank, nomor VA besar, salin, hitung mundur, polling status |
-| `src/components/customer/ManualTransferPanel.tsx` | **Baru** — nominal + kode unik, rekening + salin, upload bukti (validasi & preview), polling status |
-| `src/components/customer/CartSheet.tsx` | **Diperbarui** — pemilih metode (QRIS / Transfer VA / Transfer Manual / Bayar di Kasir) sebelum order dibuat + redirect per metode |
-| `src/app/(customer)/t/[tableSlug]/pay/[orderNumber]/page.tsx` | **Ditulis ulang** — kini **hub** pemilihan metode (atau kartu "Bayar di Kasir" berisi kode booking bila metode cash) |
-| `.../pay/[orderNumber]/qris/page.tsx` | **Baru** — halaman QRIS (dipindah dari hub) |
-| `.../pay/[orderNumber]/va/page.tsx`, `.../manual/page.tsx` | **Baru** — halaman VA & transfer manual |
-| `TODO.md` | `4.3` ditandai `[x]` |
+| `src/lib/barcode/code39.ts` | **Baru** — tabel pola Code 39 lengkap, `normalizeCode39`, `isEncodableCode39`, `encodeCode39` (modul biner, wide=3/narrow=1, gap 1 modul, start/stop `*`), `toBars`, `Code39Error` |
+| `src/lib/barcode/code39.test.ts` | **Baru** — 12 test (validitas pola, panjang modul 10×15+9, start/stop, normalisasi huruf, error, run-length bar) |
+| `src/lib/security/pin-attempts.ts` | **Baru** — pembatas 5 percobaan / 10 menit per kunci (in-memory + TTL), `isPinLocked`, `registerPinAttempt`, `resetPinAttempts`, `clearAllPinAttempts` |
+| `src/lib/security/pin-attempts.test.ts` | **Baru** — 7 test (penurunan sisa, lock, expiry jendela, isolasi per kunci, reset) |
+| `src/app/api/orders/[orderNumber]/pin/route.ts` | **Baru** — verifikasi PIN meja (`verifyPin`), pembatasan per (pesanan+IP), sukses → `Order.status = CONFIRMED` + `confirmedAt` (payment tetap `PENDING`), error 401/409/429 + `Retry-After` |
+| `src/components/customer/BookingCodeCard.tsx` | **Baru** — kode booking besar `tracking-[0.2em]`, barcode **SVG** dari `encodeCode39`, tombol salin |
+| `src/components/customer/CashierPaymentPanel.tsx` | **Baru** — kode booking + nominal, form PIN 4 kotak (auto-focus, backspace), pesan sisa percobaan, status confirmed/paid, polling 5 dtk |
+| `src/app/(customer)/t/[tableSlug]/pay/[orderNumber]/cashier/page.tsx` | **Baru** — halaman bayar di kasir (server component + panel), membaca `table.pinEnabled` |
+| `src/app/(customer)/t/[tableSlug]/pay/[orderNumber]/page.tsx` | Diperbarui — kartu "Bayar di Kasir" kini menaut ke halaman cashier |
+| `TODO.md` | `4.4` ditandai `[x]` |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`4.4 Alur Pembayaran Tunai di Kasir (Pay at Cashier)`**, ubah menjadi `[/]`.
-2. **Buat `src/lib/barcode/code39.ts`** (pure, tanpa dependency) + `src/lib/barcode/code39.test.ts`:
-   * Tabel pola Code 39 (`0-9`, `A-Z`, `-`, `.`, ` `, `$`, `/`, `+`, `%`, start/stop `*`) dengan 9 elemen (bar/space) per karakter.
-   * `encodeCode39(text)` → string biner `1/0` (bar/space) siap digambar; `isEncodableCode39(text)`; normalisasi huruf besar.
-   * Uji: pola start/stop `*`, panjang keluaran, karakter tak didukung ditolak, huruf kecil dinormalisasi.
-3. **Buat `src/components/customer/BookingCodeCard.tsx`** (`"use client"` bila perlu):
-   * Kode booking = `orderNumber` ditampilkan besar (`tabular-nums`, `tracking-widest`), tombol **Salin Kode**.
-   * **Barcode SVG** dari `encodeCode39(orderNumber)` — render `<rect>` per bar dengan proporsi bar lebar/sempit (mis. 3:1), tinggi 72px, `role="img"` + `aria-label`.
-4. **Buat `src/lib/security/pin-attempts.ts`** (in-memory dengan TTL, cukup untuk single-instance) + test:
-   * `registerPinAttempt(key)`, `isPinLocked(key)`, `resetPinAttempts(key)` — maks **5 percobaan / 10 menit** per kunci (`orderNumber` + IP/`x-forwarded-for`). Catat batasan multi-instance di komentar.
-5. **Buat `POST /api/orders/[orderNumber]/pin`** (`force-dynamic`):
-   * Body Zod strict `{ pin: string regex ^\d{4}$ }`.
-   * Cari order (`select` id, status, tableSessionId) → harus `WAITING_CASHIER_APPROVAL` (409 bila bukan).
-   * Ambil `Table.currentPin` lewat `TableSession.tableId`; bila `pinEnabled` false atau `currentPin` null → 409 "PIN meja tidak diaktifkan".
-   * Verifikasi dengan `verifyPin()` dari `src/lib/security/pin.ts`; bila gagal → 401 + `details.remainingAttempts`; bila percobaan habis → 429 + `Retry-After`.
-   * Sukses → transaksi: `order.status = CONFIRMED`, `confirmedAt = now`, `tableSession.lastActivityAt = now` (payment tunai tetap `PENDING` sampai kasir menerima uang di 5.2). Jangan set `PAID`.
-   * Respons `{ data: { orderNumber, status, next: "WAITING_CASHIER_PAYMENT" } }`.
-6. **Buat halaman `.../pay/[orderNumber]/cashier/page.tsx` + `CashierPaymentPanel`** (client):
-   * Tampilkan `BookingCodeCard`, nominal, instruksi "Tunjukkan kode ini ke kasir".
-   * Bila `pinEnabled`: form 4 kotak PIN (auto-focus, `inputMode="numeric"`), tombol "Konfirmasi PIN", pesan error & sisa percobaan, sukses → status berubah CONFIRMED (tampilkan "Menunggu kasir menerima pembayaran").
-   * Polling `payment/status` setiap 5 dtk; bila `PAID` tampilkan sukses. Sediakan tombol "Panggil Pelayan" (reuse `CallWaiterSheet` tidak wajib).
-7. **Verifikasi**: `npm test` (code39, pin-attempts), `typecheck`, `lint`, `build`, probe HTTP: body PIN bukan 4 digit → 422, order tidak ada → 404, tanpa DB → 500 rapi; halaman cashier → 200.
-8. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `4.5 Webhook Payment Gateway`), `git commit` (`feat(payment): add cash-at-cashier flow with table pin and barcode`), push.
+1. Ambil **`4.5 Webhook Payment Gateway`**, ubah menjadi `[/]`.
+2. **Buat `src/lib/payment/webhook.ts`** (pure + test):
+   * `verifyMidtransSignature({ orderId, statusCode, grossAmount, signatureKey, serverKey })` → `crypto.createHash("sha512").update(`${orderId}${statusCode}${grossAmount}${serverKey}`).digest("hex")` dibandingkan **constant-time** (`timingSafeEqual`).
+   * `parseMidtransNotification(payload)` dengan Zod strict: `transaction_status`, `fraud_status?`, `order_id`, `status_code`, `gross_amount`, `signature_key`, `payment_type?`, `transaction_id?`, `transaction_time?`.
+   * `mapTransactionToPaymentStatus({ transactionStatus, fraudStatus })` → `PAID | PENDING | FAILED | EXPIRED` (settlement/capture+accept → PAID; pending → PENDING; deny/cancel → FAILED; expire → EXPIRED; capture+challenge → PENDING).
+   * `extractOrderNumber(orderId)` — format gateway `"<orderNumber>-<timestamp>"`, contoh `ORD-0001-1700000000000` → `ORD-0001` (regex `^([A-Za-z0-9-]+?)-(\d{10,})$`).
+   * Uji: signature valid/invalid, semua pemetaan status, ekstraksi order number (termasuk order number yang mengandung tanda hubung).
+3. **Sesuaikan adapter `midtrans.ts`**: kembalikan juga `gatewayOrderId` (`transaction_details.order_id`) dan simpan di `gatewayPayload` saat membuat Payment di route QRIS (`{ qrString, qrUrl, mode, gatewayOrderId }`) agar webhook bisa mencocokkan transaksi tanpa mengandalkan parsing.
+4. **Buat `POST /api/webhooks/payment`** (`runtime = "nodejs"`, **jangan** pakai `force-dynamic` berlebihan; cukup default):
+   * Baca **raw body** (`await request.text()`) lalu `JSON.parse`; jangan mengandalkan `request.json()` bila butuh byte asli.
+   * Verifikasi signature dengan `MIDTRANS_SERVER_KEY`. Bila kunci kosong: hanya boleh lolos jika `PAYMENT_ALLOW_UNSIGNED_WEBHOOK === "true"` (mode demo) — selain itu `401`. Tambahkan env baru di `.env.example` + `env.ts`.
+   * **Idempoten**: cari `Payment` lewat `gatewayRefId`/`gatewayPayload.gatewayOrderId` (atau `orderNumber` hasil ekstraksi). Bila `payment.status` sudah `PAID`, balas `200 { received: true, duplicate: true }` tanpa menulis ulang.
+   * Status `PAID` → transaksi: `payment.update({ status: "PAID", paidAt: now })`, `order.update({ status: "CONFIRMED", confirmedAt: now })` (hanya bila order masih `PENDING_PAYMENT`), `tableSession.lastActivityAt = now`. Status `EXPIRED/FAILED` → update payment saja (order tetap `PENDING_PAYMENT` agar pelanggan bisa memilih metode lain).
+   * Respons selalu `200` untuk notifikasi valid (gateway akan retry bila non-2xx), `400` untuk payload invalid, `401` untuk signature salah.
+5. **Penerusan ke KDS**: cukup lewat status `CONFIRMED` (KDS 6.1 akan query order `CONFIRMED/PREPARING`). **Jangan** membuat broadcast realtime di tugas ini; catat sebagai pekerjaan Fase 6.
+6. **Verifikasi**: `npm test` (webhook helper), `typecheck`, `lint`, `build`, probe: body bukan JSON → 400, signature salah → 401, valid tanpa DB → 500 rapi.
+7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `4.6 Live Order Tracker & E-Struk`), `git commit` (`feat(payment): add signed payment webhook with idempotent status sync`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Metode pembayaran dipilih SEBELUM order dibuat** (di `CartSheet`), lalu redirect: QRIS → `/qris`, VA → `/va`, Manual → `/manual`, Cash → hub `/pay/[orderNumber]` (kartu kode booking).
-* **Hub tidak membuat order baru** — hanya menampilkan metode & tautan.
-* **Bukti transfer** disimpan di `public/uploads/proofs` (folder gitignored). Di platform read-only (Vercel) ganti ke object storage; kontrak respons sama.
-* **Nomor VA & QRIS saat ini mode demo** (lokal). Gateway asli butuh `MIDTRANS_SERVER_KEY` / rekening merchant asli.
+* **PIN meja**: 4 digit, disimpan sebagai HMAC di `Table.currentPin`; hanya berlaku bila `pinEnabled = true`. PIN benar → order `CONFIRMED` (bukan `PAID`); kasir masih harus menerima uang.
+* **Pembatasan PIN in-memory** (5 percobaan/10 menit). Multi-instance/serverless belum berbagi hitungan — catat batasannya.
+* **Barcode Code 39** untuk kode booking (SVG lokal, tanpa dependency). Nomor pesanan `ORD-####` semuanya encodable.
+* **Metode pembayaran dipilih sebelum order dibuat** (di `CartSheet`); hub `/pay/[orderNumber]` hanya menampilkan pilihan & tautan.
+* **Mode demo**: QRIS/VA lokal, bukti transfer disimpan di `public/uploads/proofs` (gitignored; ganti ke object storage untuk produksi).
 * **Rahasia**: `MIDTRANS_SERVER_KEY`, `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash` — jangan ke klien/log.
-* **`Payment.gatewayRefId` unik**; demo memakai prefix `demo-`/`va-`/`manual-` + timestamp.
 * **Harga**: server selalu menghitung ulang (`buildOrderDraft`); Zod strict menolak field harga dari klien.
 * **Urutan kalkulasi (WAJIB)**: subtotal → diskon → service 5% → PB1 10% → `uniqueCode` (khusus `MANUAL_TRANSFER`).
 * **BUG SSR ZUSTAND (jangan diulang)**: `persist` tidak memasang `store.persist` saat storage tidak tersedia → guard `const persistApi = useCartStore.persist; if (!persistApi) {...}`.
 * **Sinkronisasi keranjang**: lintas tab/origin sama (`BroadcastChannel`); multi-device butuh Supabase Realtime.
 * **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; urutan validasi env → slug/param → body → DB.
-* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234` (hash HMAC); staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
+* **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `admin@fnb.local/111111`, `kasir@fnb.local/222222`, `dapur@fnb.local/333333`, `waiter@fnb.local/444444`.
 * **Migrasi init jangan diedit**; bila DB tersedia: `npx prisma migrate deploy && npm run db:seed`.
 * **Sandbox**: `npm install` pakai `--ignore-scripts`; cache npm `./.npm-cache`; `next/font/google` tidak dipakai.
 * **Tema**: `:root` Customer Warm Light (`#FAF8F5`, primary `#D9381E`), `.dark` POS/KDS Slate Dark; target sentuh pelanggan ≥ 48px, POS/KDS 56px; angka wajib `tabular-nums`.
@@ -95,5 +85,6 @@
 * **[Sesi #1 — 2026-11-03 · 3.5 Cart Store & Sync]**: `cart.ts` (+13), `useCartStore` (+11), `cart-sync`, fix bug SSR `persist`. Commit `6787d5b`.
 * **[Sesi #1 — 2026-11-03 · 3.6 Cart Sheet & Upselling]**: `upsell.ts` (+9), `cart-totals.ts` (+6), `FloatingCartBar` + `CartSheet`. Fase 3 tuntas. Commit `6f551dc`.
 * **[Sesi #1 — 2026-11-03 · 4.1 API Orders]**: `order-draft.ts` (+18 test) + `POST /api/orders`. Commit `4a60c78`.
-* **[Sesi #1 — 2026-11-03 · 4.2 QRIS]**: `payment/qris.ts` (+16 test), adapter Midtrans, API qris & status, `PaymentQrisPanel`, halaman bayar, CTA keranjang. Commit `a213e7e`.
-* **[Sesi #1 — 2026-11-03 · 4.3 Transfer Bank]**: `va.ts` (+9 test), `manual-transfer.ts` (+11 test), API VA/manual/proof (upload 2 MB), panel VA & manual, hub pemilihan metode + pemilih metode di keranjang. 186 test lulus; probe HTTP & 4 halaman pembayaran 200. Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 4.2 QRIS]**: `payment/qris.ts` (+16 test), adapter Midtrans, API qris & status, `PaymentQrisPanel`, halaman bayar. Commit `a213e7e`.
+* **[Sesi #1 — 2026-11-03 · 4.3 Transfer Bank]**: `va.ts` (+9), `manual-transfer.ts` (+11), API VA/manual/proof, panel VA & manual, hub metode. Commit `f1cdf07`.
+* **[Sesi #1 — 2026-11-03 · 4.4 Tunai di Kasir]**: `code39.ts` (+12 test), `pin-attempts.ts` (+7 test), API PIN meja, `BookingCodeCard` (barcode SVG), `CashierPaymentPanel`, halaman cashier, tautan dari hub. 206 test lulus; PIN 422/400 & halaman 200 terverifikasi; SSR barcode 51 bar. Commit menyusul.
