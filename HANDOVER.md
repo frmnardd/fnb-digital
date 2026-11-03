@@ -6,54 +6,59 @@
 > - **Saat Menyelesaikan Satu Sub-Tugas**: Timpa bagian **Status Terkini** dengan kondisi terbaru dan tambahkan catatan singkat di **Riwayat Log Estafet**.
 
 ## 1. Status Proyek Terkini (Current State)
-* **Fase Aktif**: `Fase 6 — KDS & Runner` (2/3 selesai)
-* **Sub-Tugas Terakhir yang Selesai**: `6.2 SLA Aging Timer & Bump Action` ✅
-* **Sub-Tugas yang Berikutnya**: `6.3 Tampilan Mobile Pelayan / Runner (/(staff)/runner)`
-* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**350 test**, 112 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
-* **Route baru**: `POST /api/kds/items/[itemId]/bump`, `POST /api/kds/orders/[orderId]/bump` (ƒ).
-* **Verifikasi kontrak HTTP**: item id invalid → 400, action invalid → 422, valid tanpa DB → 500 rapi; order id invalid → 400, valid → 500; `/kds/kitchen` → **200**.
-* **Catatan lingkungan**: port `3126` ternyata ditempati proses lain di IPv4 (server Next hanya bind IPv6) sehingga semua request 404. **Selalu cek `Get-NetTCPConnection -LocalPort <port>` atau pakai port baru** (pengujian ulang sukses di `3210`).
+* **Fase Aktif**: `Fase 7 — Admin / Back-Office & Analitik` — **Fase 6 SELESAI (3/3)**
+* **Sub-Tugas Terakhir yang Selesai**: `6.3 Tampilan Mobile Pelayan / Runner` ✅
+* **Sub-Tugas yang Berikutnya**: `7.1 CRUD Menu, Kategori, & Quick Toggle Stok 86'd`
+* **Kondisi Build / Kompilasi**: **HIJAU** — `npm test` (**357 test**, 118 suite) ✔, `typecheck` ✔, `lint` ✔, `build` ✔.
+* **Route baru**: `/runner`, `GET /api/runner`, `POST /api/runner/items/[itemId]/serve`, `POST /api/runner/calls/[callId]/resolve`, `POST /api/runner/tables/[tableId]/clean` (ƒ).
+* **Verifikasi kontrak HTTP**: `/runner` → **200**; `/api/runner` tanpa DB → 500 rapi; serve id invalid → 400, valid → 500; resolve `action` invalid → 422, valid → 500; clean id invalid → 400, valid → 500.
 * **Database**: belum tersedia (PostgreSQL 5432 tertutup, Docker tidak ada).
-* **Progress**: 32 dari 37 sub-tugas selesai.
+* **Progress**: 33 dari 37 sub-tugas selesai.
 
 ## 2. File yang Sedang / Baru Saja Diedit
 | File | Status |
 | --- | --- |
-| `src/lib/kds.ts` | Ditambah `KDS_ITEM_ACTIONS`, `nextItemStatus` (QUEUED↔COOKING→READY, REVERT), `isTicketReady` (abaikan VOIDED), `getTicketAgingLabel` |
-| `src/lib/kds-bump.test.ts` | **Baru** — 14 test (transisi status, kesiapan tiket, label durasi) |
-| `src/app/api/kds/items/[itemId]/bump/route.ts` | **Baru** — bump per item; timestamp `cookingAt`/`readyAt`; bila semua item READY → `Order.status = READY`; 409 untuk item SERVED/VOIDED atau aksi tidak valid |
-| `src/app/api/kds/orders/[orderId]/bump/route.ts` | **Baru** — `BUMP_TICKET` (semua QUEUED/COOKING → READY) & `MARK_READY` (hanya COOKING); update status order bila semua siap |
-| `src/components/kds/TicketCard.tsx` | **Ditulis ulang** — tombol **Mulai** (QUEUED), **Siap** (COOKING), **Revert** (COOKING), **Bump Tiket**; semua 56px; status busy per item/tiket |
-| `src/components/kds/KdsBoard.tsx` | Diperbarui — `sendBump()` (POST + refetch), `busyKey`, pesan error di footer, meneruskan handler ke `TicketCard` |
-| `TODO.md` | `6.2` ditandai `[x]` |
+| `src/lib/runner.ts` | **Baru** — `WAITER_CALL_LABELS`/`getWaiterCallLabel`, `groupReadyItemsByOrder`, `sortWaiterCalls` (PENDING dulu), `getRunnerSummary` |
+| `src/lib/runner.test.ts` | **Baru** — 7 test |
+| `src/lib/services/runner.ts` | **Baru** — `getRunnerData()`: item `READY` (order non-CANCELLED/COMPLETED), panggilan `PENDING/ACKNOWLEDGED`, meja `NEEDS_CLEANING` + ringkasan |
+| `src/app/api/runner/route.ts` | **Baru** — `GET` data runner |
+| `src/app/api/runner/items/[itemId]/serve/route.ts` | **Baru** — item → `SERVED` + `servedAt`; semua item diantar → order `SERVED` |
+| `src/app/api/runner/calls/[callId]/resolve/route.ts` | **Baru** — `ACKNOWLEDGE`/`RESOLVE` (409 bila sudah selesai) |
+| `src/app/api/runner/tables/[tableId]/clean/route.ts` | **Baru** — meja → `AVAILABLE` (409 bila masih ada sesi aktif) |
+| `src/app/(staff)/layout.tsx` | **Baru** — tema terang mobile |
+| `src/app/(staff)/runner/page.tsx` | **Baru** — server component + fallback data kosong |
+| `src/components/runner/RunnerBoard.tsx` | **Baru** — 3 tab (Siap Antar / Panggilan / Meja Kotor) dengan badge jumlah, polling 5 dtk, tombol aksi 56px, empty state per tab |
+| `TODO.md` | `6.3` ditandai `[x]` (Fase 6 selesai) |
 | `HANDOVER.md` | Diperbarui (dokumen ini) |
 
 ## 3. Instruksi Spesifik untuk Agent Berikutnya (Next Actionable Step)
-1. Ambil **`6.3 Tampilan Mobile Pelayan / Runner (/(staff)/runner)`**, ubah menjadi `[/]`.
-2. **Buat `src/lib/runner.ts`** (pure + test):
-   * `groupReadyItemsByOrder(items)` → tiket `READY` yang belum `SERVED` (per order, urut waktu siap).
-   * `sortWaiterCalls(calls)` → belum direspons (`PENDING`) lebih dulu, lalu `ACKNOWLEDGED`, urut `createdAt` asc; sediakan `getWaiterCallLabel(type)` (AIR/TISU, BERSIHKAN MEJA, TANYA MENU, MINTA BILL).
-   * `getRunnerSummary({ readyItems, calls, dirtyTables })`.
-   * Uji: grouping, pengurutan, label, ringkasan kosong.
-3. **Buat `GET /api/runner`**: kembalikan `{ generatedAt, readyTickets, waiterCalls, dirtyTables }` dengan `select` eksplisit (tanpa `costPrice`/PIN). `readyTickets`: item `READY` pada order `READY`/`SERVED`-belum; `waiterCalls`: status `PENDING`/`ACKNOWLEDGED`; `dirtyTables`: meja `NEEDS_CLEANING` (+ area).
-4. **Buat endpoint aksi** (`TODO(RBAC)`):
-   * `POST /api/runner/items/[itemId]/serve` → `OrderItem.status = SERVED`, `servedAt`; bila semua item order `SERVED` → `Order.status = SERVED`.
-   * `POST /api/runner/calls/[callId]/resolve` body `{ action: "ACKNOWLEDGE" | "RESOLVE" }` → `ACKNOWLEDGED`/`RESOLVED` + timestamp; 409 bila sudah `RESOLVED`.
-   * `POST /api/runner/tables/[tableId]/clean` → `Table.status = AVAILABLE` (409 bila masih ada sesi aktif).
-5. **UI**: `src/app/(staff)/layout.tsx` (tema terang pelanggan, mobile-first) + `src/app/(staff)/runner/page.tsx` (server: muat data, fallback kosong) + `src/components/runner/RunnerBoard.tsx` (client):
-   * Tiga seksi/tab: **Siap Antar** (item per pesanan + tombol "Antar" 56px), **Panggilan Meja** (jenis panggilan, meja, waktu, tombol "Tangani"/"Selesai"), **Meja Kotor** (tombol "Sudah Bersih").
-   * Polling 5 dtk + `document.visibilityState` guard; badge jumlah per tab; empty state per seksi; `tabular-nums` untuk waktu.
-6. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`; probe `/runner` → 200, `/api/runner` tanpa DB → 500 rapi, endpoint aksi id invalid → 400 & body invalid → 422. Gunakan port baru (cek `Get-NetTCPConnection`).
-7. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke **Fase 7.1: CRUD Menu & Toggle 86'd**), `git commit` (`feat(runner): add mobile waiter view with ready items and table calls`), push.
+1. Ambil **`7.1 CRUD Menu, Kategori, & Quick Toggle Stok 86'd`**, ubah menjadi `[/]`.
+2. **Buat `src/lib/admin-menu.ts`** (pure + test):
+   * `buildMenuSlug(name)` (lowercase, strip diakritik/simbol, dash, maks 60) & `ensureUniqueSlug(base, existing)`.
+   * `validateMenuPricing({ basePrice, costPrice })` → error bila `basePrice <= 0`, `costPrice < 0`, `costPrice >= basePrice`.
+   * `validateSchedule(from, until)` → format `HH:mm` atau null.
+   * `filterAdminMenuItems(items, { search, categoryId, only86 })`.
+   * Uji: slug diakritik/spasi, duplikasi slug, validasi harga, jadwal invalid, filter.
+3. **Buat endpoint admin** (`TODO(RBAC)` untuk semua):
+   * `GET /api/admin/menu` → kategori + item (termasuk `costPrice` karena ini back-office) + jumlah menu 86'd.
+   * `POST /api/admin/categories` & `PATCH/DELETE /api/admin/categories/[id]` (Zod strict; tolak hapus kategori yang masih punya item).
+   * `POST /api/admin/menu-items` & `PATCH/DELETE /api/admin/menu-items/[id]` (validasi harga memakai helper; `modifierGroupIds` opsional untuk `set` relasi).
+   * `PATCH /api/admin/menu-items/[id]/availability` body `{ isAvailable: boolean }` — quick toggle 86'd, respons ringkas.
+4. **UI admin**: `src/app/(admin)/layout.tsx` (tema terang, sidebar 220px: Dashboard, Menu, Meja & QR, Inventori, Analitik — item belum ada dinonaktifkan) + `src/app/(admin)/admin/menu/page.tsx` (server: muat data, fallback kosong).
+   * `src/components/admin/MenuManager.tsx` (client): tabel menu (nama, kategori, harga, HPP, stasiun, status 86'd), pencarian instan, filter kategori & "hanya 86'd", **switch ketersediaan** (optimistic + revert saat gagal), tombol Tambah/Ubah/Hapus (Modal), form kategori terpisah.
+   * Semua nominal `tabular-nums`, tombol ≥ 44px, modal memakai `src/components/ui/modal.tsx`.
+5. **Verifikasi**: `npm test`, `typecheck`, `lint`, `build`; probe `/admin/menu` → 200, `GET /api/admin/menu` tanpa DB → 500 rapi, `PATCH availability` id invalid → 400 & body invalid → 422.
+6. Tandai `[x]`, perbarui `HANDOVER.md` (arahkan ke `7.2 QR Code Table Studio`), `git commit` (`feat(admin): add menu and category management with 86d toggle`), push.
 
 ## 4. Catatan Penting / Kendala Teknis (Known Issues & Decisions)
-* **Bump action**: item KDS hanya `QUEUED`/`COOKING` (item `READY` sudah keluar dari board); `isTicketReady` menentukan order menjadi `READY`.
-* **Port bentrok**: sebelum `next start`, cek port; bila 404 untuk semua route, hampir pasti request mengenai proses lain di IPv4 (server Next hanya bind IPv6). Pakai port baru.
-* **Belum ada sesi staf/RBAC**: endpoint KDS/Runner masih terbuka (`TODO(RBAC)`); jangan menulis klaim keamanan.
+* **Runner**: item siap = `OrderItem.status = READY`; "Antar" → `SERVED`; panggilan meja `PENDING` ditangani lebih dulu; meja hanya bisa dibersihkan bila tidak ada sesi aktif.
+* **Port bentrok**: sebelum `next start`, cek `Get-NetTCPConnection -LocalPort <port>`; bila semua route 404, request kemungkinan mengenai proses lain di IPv4 (Next hanya bind IPv6). Pakai port baru (terakhir: 3211).
+* **Belum ada sesi staf/RBAC**: endpoint POS/KDS/Runner/Admin masih terbuka (`TODO(RBAC)`); jangan menulis klaim keamanan.
 * **PENTING — jangan menulis file non-ASCII memakai PowerShell `Set-Content`/`Add-Content`** (mojibake & BOM). Gunakan `write`/`edit`.
 * **Satu jalur order**: `createOrder()` (`src/lib/services/order-creation.ts`) dipakai `POST /api/orders` & `/api/pos/walk-in`.
-* **POS/KDS** `.dark`, target sentuh 56px, `tabular-nums`, `h-dvh overflow-hidden` per panel.
-* **Rahasia**: `MIDTRANS_SERVER_KEY`, `costPrice`, `pinHash`, `currentPin`, `sessionTokenHash`.
+* **Harga**: server selalu menghitung ulang (`buildOrderDraft`); urutan subtotal → diskon → service 5% → PB1 10% → `uniqueCode` (khusus `MANUAL_TRANSFER`).
+* **POS/KDS** `.dark`, target sentuh 56px, `tabular-nums`, `h-dvh overflow-hidden` per panel; modul pelanggan/admin bertema terang.
+* **Rahasia**: `MIDTRANS_SERVER_KEY`, `costPrice` (jangan kirim ke endpoint publik), `pinHash`, `currentPin`, `sessionTokenHash`.
 * **BUG SSR ZUSTAND**: `persist` tidak memasang `store.persist` saat storage tidak tersedia → guard.
 * **Kontrak API**: sukses `{ data }`, gagal `{ error: { code, message, details? } }`; biarkan `ZodError` naik ke `handleRouteError`.
 * **Seed**: `npm run db:seed` / `npm run db:seed:dry`. Meja `meja-01..03` PIN `1234`; staf `kasir@fnb.local/222222`.
@@ -93,5 +98,6 @@
 * **[Sesi #1 — 2026-11-03 · 5.7 Supervisor PIN]**: `authorization-token.ts` (+8 test), `supervisor-pin.ts` (+4 test), API `supervisor-authorize`, `SupervisorPinModal`. Commit `916aad4`.
 * **[Sesi #1 — 2026-11-03 · 5.8 Shift & Laci Kas]**: `shift.ts` (+9 test), 4 endpoint shift, `ShiftWorkspace`, tautan pembayaran tunai ke shift. Commit `f1ba2e7`.
 * **[Sesi #1 — 2026-11-03 · 5.9 ESC/POS]**: `printer/escpos.ts` (+19 test), endpoint payload ESC/POS, tombol cetak 58/80 mm. Commit `db96455`.
-* **[Sesi #1 — 2026-11-03 · 6.1 KDS board]**: `kds.ts` (+14 test), service & API `/api/kds/orders`, layout `(kds)`, `/kds/[station]`, `KdsBoard` + `TicketCard`. Commit `2a4916e`.
-* **[Sesi #1 — 2026-11-03 · 6.2 Bump actions]**: `nextItemStatus`/`isTicketReady`/`getTicketAgingLabel` (+14 test), 2 endpoint bump (item & tiket), tombol Mulai/Siap/Revert/Bump aktif. 350 test lulus; probe 400/422/500 & KDS 200 (setelah ganti port karena bentrok). Commit menyusul.
+* **[Sesi #1 — 2026-11-03 · 6.1 KDS board]**: `kds.ts` (+14 test), service & API, `/kds/[station]`, `KdsBoard` + `TicketCard`. Commit `2a4916e`.
+* **[Sesi #1 — 2026-11-03 · 6.2 Bump actions]**: `nextItemStatus`/`isTicketReady`/`getTicketAgingLabel` (+14 test), 2 endpoint bump, tombol Mulai/Siap/Revert/Bump. Commit `0070f5e`.
+* **[Sesi #1 — 2026-11-03 · 6.3 Runner]**: `runner.ts` (+7 test), service & 4 endpoint runner, halaman `/runner` + `RunnerBoard` (3 tab, polling). Fase 6 tuntas; 357 test lulus; probe 200/400/422/500 sesuai kontrak. Commit menyusul.
