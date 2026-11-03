@@ -6,8 +6,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { CashPaymentModal } from "@/components/pos/CashPaymentModal";
 import { SplitBillModal } from "@/components/pos/SplitBillModal";
+import { SupervisorPinModal } from "@/components/pos/SupervisorPinModal";
 import { Button } from "@/components/ui/button";
 import { formatRupiah } from "@/lib/pricing";
+import type { SupervisorAction } from "@/lib/security/authorization-token";
 import { cn } from "@/lib/utils";
 import type { PosBillDetail, PosQueueOrder } from "@/types/pos";
 
@@ -53,6 +55,7 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
   const [isRejecting, setIsRejecting] = useState(false);
   const [isCashModalOpen, setIsCashModalOpen] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [supervisorAction, setSupervisorAction] = useState<SupervisorAction | null>(null);
 
   const loadBill = useCallback(async (orderNumber: string) => {
     setIsLoading(true);
@@ -340,6 +343,17 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
         </div>
       ) : null}
 
+      {payment?.status !== "PAID" ? (
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button variant="outline" onClick={() => setSupervisorAction("VOID_ITEM")}>
+            Void Item
+          </Button>
+          <Button variant="outline" onClick={() => setSupervisorAction("MANUAL_DISCOUNT")}>
+            Diskon Manual
+          </Button>
+        </div>
+      ) : null}
+
       {isPaid ? (
         <p className="flex items-center gap-1.5 rounded-lg bg-success/10 p-2 text-[11px] font-bold text-success">
           <CheckCircle2 className="size-3.5" aria-hidden />
@@ -362,6 +376,20 @@ export function PosBillPanel({ order }: { order: PosQueueOrder | null }) {
         orderNumber={bill.orderNumber}
         total={bill.totals.grandTotal}
         onPaid={(changeAmount) => void handleCashPaid(changeAmount)}
+      />
+
+      <SupervisorPinModal
+        open={supervisorAction !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSupervisorAction(null);
+          }
+        }}
+        action={supervisorAction ?? "VOID_ITEM"}
+        onAuthorized={() => {
+          setNotice("Otorisasi supervisor berhasil (token berlaku 5 menit).");
+          setSupervisorAction(null);
+        }}
       />
 
       <SplitBillModal
