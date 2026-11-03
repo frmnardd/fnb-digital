@@ -67,7 +67,7 @@ export default async function PaymentManualPage({ params }: ManualPageProps) {
         <p className="text-2xl font-extrabold tabular-nums">{formatRupiah(order.grandTotal)}</p>
       </header>
 
-      <ManualTransferPanel orderNumber={order.orderNumber} />
+      <ManualTransferPanel orderNumber={order.orderNumber} tableSlug={tableSlug} />
 
       <Link
         href={`/t/${encodeURIComponent(tableSlug)}/pay/${encodeURIComponent(order.orderNumber)}`}

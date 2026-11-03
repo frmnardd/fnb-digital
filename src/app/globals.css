@@ -144,3 +144,27 @@
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
   }
 }
+
+/*
+ * Print — E-Struk pelanggan (lebar kertas thermal 80 mm).
+ * Tombol navigasi disembunyikan; struk dicetak tanpa border/bayangan.
+ */
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+
+  .receipt-paper {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+}

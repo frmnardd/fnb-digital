@@ -67,7 +67,11 @@ export default async function PaymentVaPage({ params }: VaPageProps) {
         <p className="text-2xl font-extrabold tabular-nums">{formatRupiah(order.grandTotal)}</p>
       </header>
 
-      <VirtualAccountPanel orderNumber={order.orderNumber} amount={order.grandTotal} />
+      <VirtualAccountPanel
+        orderNumber={order.orderNumber}
+        amount={order.grandTotal}
+        tableSlug={tableSlug}
+      />
 
       <Link
         href={`/t/${encodeURIComponent(tableSlug)}/pay/${encodeURIComponent(order.orderNumber)}`}

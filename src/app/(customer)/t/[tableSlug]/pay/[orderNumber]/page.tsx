@@ -164,6 +164,13 @@ export default async function PaymentHubPage({ params }: PayHubProps) {
       </p>
 
       <Link
+        href={`/t/${encodeURIComponent(tableSlug)}/order/${encodeURIComponent(order.orderNumber)}`}
+        className="inline-flex h-12 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-bold text-foreground"
+      >
+        Lacak Pesanan
+      </Link>
+
+      <Link
         href={`/t/${encodeURIComponent(tableSlug)}`}
         className="text-center text-[11px] font-bold text-muted-foreground underline-offset-2 hover:underline"
       >

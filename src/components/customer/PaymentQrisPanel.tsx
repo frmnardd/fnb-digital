@@ -207,8 +207,14 @@ export function PaymentQrisPanel({
           Pesanan Anda sedang diteruskan ke dapur. Terima kasih!
         </p>
         <Link
-          href={`/t/${encodeURIComponent(tableSlug)}`}
+          href={`/t/${encodeURIComponent(tableSlug)}/order/${encodeURIComponent(orderNumber)}`}
           className="mt-1 inline-flex h-12 items-center justify-center rounded-lg bg-primary px-5 text-sm font-bold text-primary-foreground"
+        >
+          Lacak Pesanan
+        </Link>
+        <Link
+          href={`/t/${encodeURIComponent(tableSlug)}`}
+          className="text-[11px] font-bold text-muted-foreground underline-offset-2 hover:underline"
         >
           Kembali ke menu
         </Link>

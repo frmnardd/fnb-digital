@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Loader2, Lock, Wallet } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { BookingCodeCard } from "@/components/customer/BookingCodeCard";
@@ -24,10 +25,12 @@ export function CashierPaymentPanel({
   orderNumber,
   amount,
   pinEnabled,
+  tableSlug,
 }: {
   orderNumber: string;
   amount: number;
   pinEnabled: boolean;
+  tableSlug: string;
 }) {
   const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
   const [phase, setPhase] = useState<"idle" | "confirmed" | "paid">("idle");
@@ -119,6 +122,12 @@ export function CashierPaymentPanel({
         <CheckCircle2 className="size-8 text-success" aria-hidden />
         <p className="text-sm font-extrabold text-success">Pembayaran lunas</p>
         <p className="text-xs text-muted-foreground">Terima kasih. Pesanan Anda sedang disiapkan.</p>
+        <Link
+          href={`/t/${encodeURIComponent(tableSlug)}/order/${encodeURIComponent(orderNumber)}`}
+          className="mt-1 inline-flex h-12 items-center justify-center rounded-lg bg-primary px-5 text-sm font-bold text-primary-foreground"
+        >
+          Lacak Pesanan
+        </Link>
       </div>
     );
   }

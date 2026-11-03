@@ -79,6 +79,7 @@ export default async function PaymentCashierPage({ params }: CashierPageProps) {
         orderNumber={order.orderNumber}
         amount={order.grandTotal}
         pinEnabled={order.tableSession?.table.pinEnabled ?? false}
+        tableSlug={tableSlug}
       />
 
       <Link

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy, Loader2, Timer, Wallet } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -35,9 +36,11 @@ function formatCountdown(totalSeconds: number): string {
 export function VirtualAccountPanel({
   orderNumber,
   amount,
+  tableSlug,
 }: {
   orderNumber: string;
   amount: number;
+  tableSlug: string;
 }) {
   const [bank, setBank] = useState<BankCode>("BCA");
   const [data, setData] = useState<VaData | null>(null);
@@ -147,6 +150,12 @@ export function VirtualAccountPanel({
         <Check className="size-8 text-success" aria-hidden />
         <p className="text-sm font-extrabold text-success">Pembayaran diterima</p>
         <p className="text-xs text-muted-foreground">Pesanan Anda diteruskan ke dapur.</p>
+        <Link
+          href={`/t/${encodeURIComponent(tableSlug)}/order/${encodeURIComponent(orderNumber)}`}
+          className="mt-1 inline-flex h-12 items-center justify-center rounded-lg bg-primary px-5 text-sm font-bold text-primary-foreground"
+        >
+          Lacak Pesanan
+        </Link>
       </div>
     );
   }

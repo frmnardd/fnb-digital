@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Copy, Loader2, Upload } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,13 @@ interface ApiEnvelope<T> {
   error?: { message?: string };
 }
 
-export function ManualTransferPanel({ orderNumber }: { orderNumber: string }) {
+export function ManualTransferPanel({
+  orderNumber,
+  tableSlug,
+}: {
+  orderNumber: string;
+  tableSlug: string;
+}) {
   const [data, setData] = useState<ManualData | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "uploaded" | "paid">("loading");
   const [message, setMessage] = useState<string | null>(null);
@@ -161,6 +168,12 @@ export function ManualTransferPanel({ orderNumber }: { orderNumber: string }) {
         <CheckCircle2 className="size-8 text-success" aria-hidden />
         <p className="text-sm font-extrabold text-success">Pembayaran dikonfirmasi kasir</p>
         <p className="text-xs text-muted-foreground">Pesanan Anda diteruskan ke dapur.</p>
+        <Link
+          href={`/t/${encodeURIComponent(tableSlug)}/order/${encodeURIComponent(orderNumber)}`}
+          className="mt-1 inline-flex h-12 items-center justify-center rounded-lg bg-primary px-5 text-sm font-bold text-primary-foreground"
+        >
+          Lacak Pesanan
+        </Link>
       </div>
     );
   }

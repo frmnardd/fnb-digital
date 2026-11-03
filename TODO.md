@@ -32,7 +32,7 @@
 - [x] **4.3 Integrasi Pembayaran Transfer Bank (Virtual Account & Transfer Manual Kode Unik)**: Buat tampilan pemilihan Bank VA (dengan tombol *Copy VA*) serta opsi *fallback* Transfer Rekening Manual yang menampilkan nominal + 3 digit kode unik dan form *Upload Bukti Transfer*.
 - [x] **4.4 Alur Pembayaran Tunai di Kasir (`Pay at Cashier`)**: Buat halaman instruksi bayar di kasir yang menampilkan **Kode Booking & Barcode Pesanan**, opsi input PIN Meja 4-Digit (jika diaktifkan), dan meneruskan status `WAITING_CASHIER_APPROVAL` ke layar kasir.
 - [x] **4.5 Webhook Payment Gateway (`POST /api/webhooks/payment`)**: Buat endpoint penerima *callback* pembayaran lunas yang memverifikasi *signature*, mengubah status `Payment` menjadi `PAID`, meneruskan pesanan otomatis ke layar KDS Dapur/Bar, dan memperbarui layar pelanggan.
-- [ ] **4.6 Halaman Live Order Tracker & E-Struk PDF**: Buat halaman pelacakan progres pesanan *real-time* (`Diterima` ➔ `Dimasak` ➔ `Siap Diantar` ➔ `Selesai`) beserta tombol unduh struk digital.
+- [x] **4.6 Halaman Live Order Tracker & E-Struk PDF**: Buat halaman pelacakan progres pesanan *real-time* (`Diterima` ➔ `Dimasak` ➔ `Siap Diantar` ➔ `Selesai`) beserta tombol unduh struk digital.
 
 ## Fase 5: Halaman Kasir (POS Dashboard — Tablet/Desktop)
 - [ ] **5.1 Layout Utama POS 3-Panel & Notifikasi Suara**: Bangun kerangka halaman `/(pos)/cashier` dengan *Sidebar Navigasi*, *Panel Tengah*, *Panel Detail Tagihan Kanan*, serta sistem peringatan audio (*sound alert*) untuk pesanan baru dan panggilan meja.
