@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  */
 
 const NAV = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: false },
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: true },
   { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed, enabled: true },
   { href: "/admin/tables", label: "Meja & QR", icon: QrCode, enabled: true },
   { href: "/admin/inventory", label: "Inventori", icon: Boxes, enabled: true },
