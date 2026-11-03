@@ -27,7 +27,7 @@
 - [x] **3.6 Halaman Keranjang, Upselling, & Rincian Biaya**: Buat tampilan *drawer/page* keranjang yang menampilkan daftar pesanan, *widget cross-selling* rekomendasi camilan/minuman, input nama pelanggan & WhatsApp opsional, serta rincian transparan (Subtotal, *Service Charge*, PB1, Total).
 
 ## Fase 4: Sistem Pembayaran (QRIS, Transfer/VA, & Tunai di Kasir)
-- [ ] **4.1 API Pembuatan Order (`POST /api/orders`)**: Buat endpoint yang memvalidasi stok menu, menghitung ulang harga di *server*, menyimpan `Order` & `OrderItem`, dan menentukan alur berdasarkan metode bayar yang dipilih.
+- [x] **4.1 API Pembuatan Order (`POST /api/orders`)**: Buat endpoint yang memvalidasi stok menu, menghitung ulang harga di *server*, menyimpan `Order` & `OrderItem`, dan menentukan alur berdasarkan metode bayar yang dipilih.
 - [ ] **4.2 Integrasi Pembayaran QRIS Dinamis & Tombol Unduh QR**: Buat modul generator *Dynamic QRIS* beserta tampilan halaman tunggu pembayaran yang memiliki *countdown timer*, tombol **Simpan Gambar QRIS ke Galeri**, dan pendengar status otomatis (*webhook listener*).
 - [ ] **4.3 Integrasi Pembayaran Transfer Bank (Virtual Account & Transfer Manual Kode Unik)**: Buat tampilan pemilihan Bank VA (dengan tombol *Copy VA*) serta opsi *fallback* Transfer Rekening Manual yang menampilkan nominal + 3 digit kode unik dan form *Upload Bukti Transfer*.
 - [ ] **4.4 Alur Pembayaran Tunai di Kasir (`Pay at Cashier`)**: Buat halaman instruksi bayar di kasir yang menampilkan **Kode Booking & Barcode Pesanan**, opsi input PIN Meja 4-Digit (jika diaktifkan), dan meneruskan status `WAITING_CASHIER_APPROVAL` ke layar kasir.

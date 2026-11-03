@@ -5,6 +5,8 @@ import type { PublicCategory, PublicMenuItem } from "@/types/menu";
 /**
  * Mengubah hasil query Prisma menjadi payload publik (tanpa data internal).
  */
+export type MenuItemRow = CategoryWithItems["menuItems"][number];
+
 export function toPublicCategory(
   category: CategoryWithItems,
   options: { now: Date; timeZone: string },
@@ -19,8 +21,8 @@ export function toPublicCategory(
   };
 }
 
-function toPublicMenuItem(
-  item: CategoryWithItems["menuItems"][number],
+export function toPublicMenuItem(
+  item: MenuItemRow,
   options: { now: Date; timeZone: string },
 ): PublicMenuItem {
   return {
